@@ -7,13 +7,10 @@ const path = require('path');
 const cors = require('cors');
 
 const app = express();
-app.use(cors({
-    origin: 'http://localhost:5173',
-    credentials: true
-}));
+app.use(cors());
 app.use(express.json());
 
-const CLIENT_URL = "http://localhost:5173";
+const CLIENT_URL = "https://groove-music-73h3.onrender.com";
 
 
 const ytDlpWrap = new YTDlpWrap();
@@ -272,7 +269,7 @@ app.get('/auth/google', passport.authenticate('google', {
 app.get('/auth/google/callback',
     passport.authenticate('google', { failureRedirect: '/' }),
     (req, res) => {
-        res.redirect('http://localhost:5173'); // Redirect to frontend
+        res.redirect(CLIENT_URL); // Redirect to frontend
     }
 );
 

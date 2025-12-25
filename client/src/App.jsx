@@ -51,7 +51,6 @@ function AppContent() {
         closeMobile={() => setIsMobileMenuOpen(false)}
       />
 
-      {/* Mobile Menu Backdrop */}
       {isMobileMenuOpen && (
         <div
           className="mobile-backdrop"
