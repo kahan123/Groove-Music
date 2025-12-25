@@ -60,6 +60,7 @@ app.get('/search', async (req, res) => {
 });
 
 app.get('/home', async (req, res) => {
+    console.log("req recieved")
     try {
         const categories = [
             { title: "Top Hits 🌎", query: "top hits 2024" },
