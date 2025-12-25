@@ -1,0 +1,352 @@
+import { createContext, useContext, useState, useRef, useEffect } from 'react';
+import { useToast } from './ToastContext';
+
+const MusicContext = createContext();
+
+export const useMusic = () => useContext(MusicContext);
+
+export const MusicProvider = ({ children }) => {
+    const { success, error, info } = useToast();
+    const [currentSong, setCurrentSong] = useState(null);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [isBuffering, setIsBuffering] = useState(false);
+    const [queue, setQueue] = useState([]);
+    const [playlists, setPlaylists] = useState([]);
+    const audioRef = useRef(new Audio());
+
+    const [shuffle, setShuffle] = useState(false);
+    const [user, setUser] = useState(null);
+    const [repeat, setRepeat] = useState('off'); // 'off', 'one', 'all'
+    const [history, setHistory] = useState([]);
+    const [likedSongs, setLikedSongs] = useState([]);
+
+    useEffect(() => {
+        const fetchUser = async () => {
+            try {
+                // Ensure credentials are sent to get the cookie
+                const res = await fetch(`${API_URL}/api/current_user`, {
+                    credentials: 'include'
+                });
+                const data = await res.json();
+                if (data && data.googleId) {
+                    setUser(data);
+                    // Sync initial state
+                    if (data.likedSongs) {
+                        setLikedSongs(data.likedSongs.map(s => ({
+                            id: s.videoId,
+                            title: s.title,
+                            artist: s.artist,
+                            cover: s.cover
+                        })));
+                    }
+                    if (data.playlists) {
+                        setPlaylists(data.playlists);
+                    }
+                }
+            } catch (err) {
+                console.error("Failed to fetch user:", err);
+            }
+        };
+        fetchUser();
+    }, []);
+
+    const toggleLike = async (song) => {
+        if (!user) {
+            error("Login to like songs!");
+            return;
+        }
+
+        // Optimistic update
+        const isLiked = likedSongs.some(s => s.id === song.id);
+        if (isLiked) {
+            setLikedSongs(prev => prev.filter(s => s.id !== song.id));
+        } else {
+            setLikedSongs(prev => [...prev, song]);
+        }
+
+        try {
+            const res = await fetch(`${API_URL}/api/likes`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ song })
+            });
+            const updatedUser = await res.json();
+            setUser(updatedUser);
+            // Sync liked songs from backend format (videoId -> id)
+            setLikedSongs(updatedUser.likedSongs.map(s => ({
+                id: s.videoId,
+                title: s.title,
+                artist: s.artist,
+                cover: s.cover
+            })));
+        } catch (err) {
+            console.error("Like failed", err);
+            // Revert? For now assume success or user refresh handles it
+        }
+    };
+
+    const createPlaylist = async (name) => {
+        if (!user) return null;
+        try {
+            const res = await fetch(`${API_URL}/api/playlists`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ name })
+            });
+            const updatedUser = await res.json();
+            setUser(updatedUser);
+            setPlaylists(updatedUser.playlists);
+            success(`Created playlist "${name}"`);
+            // Return the new playlist ID (last one)
+            return updatedUser.playlists[updatedUser.playlists.length - 1]._id;
+        } catch (err) {
+            console.error("Create playlist failed", err);
+            error("Failed to create playlist");
+            return null;
+        }
+    };
+
+    const updatePlaylist = async (id, name) => {
+        if (!user) return;
+        try {
+            const res = await fetch(`${API_URL}/api/playlists/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ name })
+            });
+            const updatedUser = await res.json();
+            setUser(updatedUser);
+            setPlaylists(updatedUser.playlists);
+            success("Playlist updated");
+        } catch (err) {
+            console.error("Update playlist failed", err);
+            error("Failed to update playlist");
+        }
+    };
+
+    const addToPlaylist = async (playlistId, song) => {
+        if (!user) return;
+        try {
+            const res = await fetch(`${API_URL}/api/playlists/add`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ playlistId, song })
+            });
+            if (!res.ok) {
+                const text = await res.text();
+                if (res.status === 400) throw new Error(text); // "Song already in playlist"
+                throw new Error("Failed to add");
+            }
+            const updatedUser = await res.json();
+            setUser(updatedUser);
+            setPlaylists(updatedUser.playlists);
+            success(`Added to playlist!`);
+        } catch (err) {
+            console.error("Add to playlist failed", err);
+            error(err.message || "Failed to add to playlist");
+        }
+    };
+
+    const removeSongFromPlaylist = async (playlistId, songId) => {
+        if (!user) return;
+        try {
+            const res = await fetch(`${API_URL}/api/playlists/${playlistId}/songs/${songId}`, {
+                method: 'DELETE',
+                credentials: 'include'
+            });
+            if (!res.ok) throw new Error("Failed to remove song");
+            const updatedUser = await res.json();
+            setUser(updatedUser);
+            setPlaylists(updatedUser.playlists);
+            success("Song removed from playlist");
+        } catch (err) {
+            console.error("Remove song failed", err);
+            error("Failed to remove song");
+        }
+    };
+
+    const deletePlaylist = async (id) => {
+        if (!user) return;
+        try {
+            console.log(`Deleting playlist ${id}...`);
+            const res = await fetch(`${API_URL}/api/playlists/${id}`, {
+                method: 'DELETE',
+                credentials: 'include'
+            });
+            if (!res.ok) {
+                const text = await res.text();
+                console.error(`Delete failed: ${res.status} ${text}`);
+                throw new Error(text || 'Delete failed');
+            }
+            const updatedUser = await res.json();
+            setUser(updatedUser);
+            setPlaylists(updatedUser.playlists);
+            success("Playlist deleted");
+        } catch (err) {
+            console.error("Delete playlist failed", err);
+            error(`Failed to delete: ${err.message}`);
+        }
+    };
+
+    const playSong = (song) => {
+        if (!song) return;
+        if (currentSong && currentSong.id === song.id) {
+            togglePlay();
+            return;
+        }
+        if (currentSong) {
+            setHistory(prev => [...prev, currentSong]);
+        }
+        setCurrentSong(song);
+        setIsPlaying(true);
+        setIsBuffering(true);
+    };
+
+    const togglePlay = () => setIsPlaying(prev => !prev);
+
+    const toggleShuffle = () => setShuffle(prev => !prev);
+
+    const toggleRepeat = () => {
+        setRepeat(prev => prev === 'off' ? 'all' : prev === 'all' ? 'one' : 'off');
+    };
+
+    const API_URL = import.meta.env.VITE_API_URL;
+
+    const autoPlayRecommended = async (current) => {
+        if (!current) return;
+        console.log("Autoplaying based on:", current.title);
+        try {
+            // Build query params
+            let url = `${API_URL}/recommend?trackId=${current.id}&artist=${encodeURIComponent(current.artist)}`;
+            if (current.genre) {
+                url += `&genre=${encodeURIComponent(current.genre)}`;
+            }
+
+            const res = await fetch(url);
+            const data = await res.json();
+
+            if (data && data.length > 0) {
+                console.log("Queueing recommended:", data.length);
+                setQueue(data);
+                // Also optionally play the first one immediately if queue was empty
+                const next = data[0];
+                setQueue(prev => prev.slice(1));
+                setHistory(prev => [...prev, current]);
+                setCurrentSong(next);
+                setIsPlaying(true);
+            }
+        } catch (err) {
+            console.error("Autoplay failed", err);
+        }
+    };
+
+    const nextSong = () => {
+        if (repeat === 'one') {
+            if (audioRef.current) {
+                audioRef.current.currentTime = 0;
+                audioRef.current.play();
+            }
+            return;
+        }
+
+        if (queue.length > 0) {
+            let nextIndex = 0;
+            if (shuffle) {
+                nextIndex = Math.floor(Math.random() * queue.length);
+            }
+
+            const next = queue[nextIndex];
+
+            // Queue management: remove played song
+            const newQueue = [...queue];
+            newQueue.splice(nextIndex, 1);
+            setQueue(newQueue);
+
+            if (currentSong) {
+                setHistory(prev => [...prev, currentSong]);
+            }
+
+            setCurrentSong(next);
+            setIsPlaying(true);
+        } else {
+            // Queue empty - check logic
+            if (repeat === 'all' && history.length > 0) {
+                // Loop back to history? Simple implementation: just Autoplay
+                if (currentSong) autoPlayRecommended(currentSong);
+                else setIsPlaying(false);
+            } else {
+                // Try autoplay
+                if (currentSong) autoPlayRecommended(currentSong);
+                else setIsPlaying(false);
+            }
+        }
+    };
+
+    const prevSong = () => {
+        if (audioRef.current && audioRef.current.currentTime > 3) {
+            audioRef.current.currentTime = 0;
+            return;
+        }
+
+        if (history.length > 0) {
+            const previous = history[history.length - 1];
+            setHistory(prev => prev.slice(0, -1));
+
+            if (currentSong) {
+                setQueue(prev => [currentSong, ...prev]);
+            }
+
+            setCurrentSong(previous);
+            setIsPlaying(true);
+        }
+    };
+
+
+
+    const startRadio = async (artist) => {
+        if (!artist) return;
+        try {
+            const res = await fetch(`${API_URL}/radio?artist=${encodeURIComponent(artist)}`);
+            const data = await res.json();
+            setQueue(data);
+            console.log("Radio started for:", artist);
+        } catch (err) {
+            console.error("Radio start failed", err);
+        }
+    };
+
+    return (
+        <MusicContext.Provider value={{
+            currentSong,
+            isPlaying,
+            setIsPlaying,
+            isBuffering,
+            setIsBuffering,
+            queue,
+            playlists,
+            playSong,
+            togglePlay,
+            startRadio,
+            addToPlaylist,
+            nextSong,
+            prevSong,
+            shuffle,
+            toggleShuffle,
+            repeat,
+            toggleRepeat,
+            likedSongs,
+            toggleLike,
+            user,
+            createPlaylist,
+            updatePlaylist,
+            deletePlaylist,
+            removeSongFromPlaylist
+        }}>
+            {children}
+        </MusicContext.Provider>
+    );
+};
