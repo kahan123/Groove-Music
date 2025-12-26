@@ -210,20 +210,69 @@ app.get('/song', async (req, res) => {
 
         console.log(`Streaming (yt-dlp): ${video.title}`);
 
-        // Use yt-dlp to stream directly (bypasses 403s better than axios)
-        res.setHeader('Content-Type', 'audio/mpeg');
+        // Handle HTTP Range Requests (Critical for Vercel/Serverless)
+        // YouTube URLs allow range requests, so we can just redirect the client 
+        // to the direct URL if we remove the IP check, OR we proxy range-by-range.
 
-        const stream = ytDlpWrap.execStream([
+        // Strategy: Get the Direct URL using -g and proxy the specific chunk requested by the browser.
+        const directUrl = await ytDlpWrap.execPromise([
             video.url,
+            '-g',
             '-f', 'bestaudio'
         ]);
 
-        stream.pipe(res);
+        if (!directUrl) throw new Error("Failed to get direct URL");
 
-        stream.on('error', (err) => {
-            console.error('Stream Error:', err);
-            if (!res.headersSent) res.status(500).send(err.message);
-        });
+        const range = req.headers.range;
+        if (!range) {
+            // Requesting the whole file (usually initial probe)
+            // We can just pipe the start, but better to proxy simply
+            const axios = require('axios');
+            const response = await axios({
+                method: 'get',
+                url: directUrl.trim(),
+                responseType: 'stream',
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                }
+            });
+            res.setHeader('Content-Type', 'audio/mpeg');
+            response.data.pipe(res);
+            return;
+        }
+
+        // Parse Range (e.g., "bytes=0-")
+        const parts = range.replace(/bytes=/, "").split("-");
+        const start = parseInt(parts[0], 10);
+        // Chunk size: 1MB per request to stay well within 10s timeout
+        const CHUNK_SIZE = 10 ** 6;
+        const end = parts[1] ? parseInt(parts[1], 10) : start + CHUNK_SIZE;
+
+        const axios = require('axios');
+        try {
+            const response = await axios({
+                method: 'get',
+                url: directUrl.trim(),
+                responseType: 'stream',
+                headers: {
+                    'Range': `bytes=${start}-${end}`,
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                }
+            });
+
+            // Pass the Content-Range header back to the client
+            res.writeHead(206, {
+                'Content-Range': response.headers['content-range'],
+                'Accept-Ranges': 'bytes',
+                'Content-Length': response.headers['content-length'],
+                'Content-Type': 'audio/mpeg',
+            });
+
+            response.data.pipe(res);
+        } catch (streamErr) {
+            console.error("Stream Proxy Error:", streamErr.message);
+            res.status(500).end();
+        }
 
     } catch (err) {
         console.error('Search Error:', err);
