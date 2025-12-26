@@ -7,21 +7,33 @@ const path = require('path');
 const cors = require('cors');
 
 const app = express();
-app.use(cors());
+app.use(cors({
+    origin: ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173'],
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
+}));
 app.use(express.json());
 
-const CLIENT_URL = "https://groove-music-73h3.onrender.com";
-
+const CLIENT_URL = process.env.CLIENT_URL;
 
 const ytDlpWrap = new YTDlpWrap();
-const binaryPath = path.join(__dirname, 'yt-dlp.exe');
-
+// Vercel only allows writing to /tmp
+const binaryName = process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp';
+const binaryPath = process.platform === 'win32'
+    ? path.join(__dirname, binaryName)
+    : path.join('/tmp', binaryName);
 
 (async () => {
+    // on Vercel/Linux, we might need to redownload if /tmp was cleared (ephemeral)
     if (!fs.existsSync(binaryPath)) {
-        console.log('Downloading yt-dlp binary...');
+        console.log(`Downloading yt-dlp binary to ${binaryPath}...`);
         await YTDlpWrap.downloadFromGithub(binaryPath);
         console.log('Downloaded yt-dlp binary');
+
+        // Ensure executable permissions on Linux/Unix
+        if (process.platform !== 'win32') {
+            fs.chmodSync(binaryPath, '755');
+        }
     }
     ytDlpWrap.setBinaryPath(binaryPath);
 })();
@@ -235,7 +247,7 @@ passport.deserializeUser((id, done) => {
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: 'http://localhost:3000/auth/google/callback'
+    callbackURL: `http://localhost:3000/auth/google/callback`
 }, async (accessToken, refreshToken, profile, done) => {
     // Check if user exists
     const existingUser = await User.findOne({ googleId: profile.id });
@@ -425,6 +437,10 @@ app.delete('/api/playlists/:id', async (req, res) => {
     }
 });
 
-app.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
-});
+if (require.main === module) {
+    app.listen(PORT, () => {
+        console.log(`Server is running on http://localhost:${PORT}`);
+    });
+}
+
+module.exports = app;

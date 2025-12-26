@@ -20,6 +20,8 @@ export const MusicProvider = ({ children }) => {
     const [history, setHistory] = useState([]);
     const [likedSongs, setLikedSongs] = useState([]);
 
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
     useEffect(() => {
         const fetchUser = async () => {
             try {
@@ -27,6 +29,17 @@ export const MusicProvider = ({ children }) => {
                 const res = await fetch(`${API_URL}/api/current_user`, {
                     credentials: 'include'
                 });
+
+                if (res.status === 401 || res.status === 403) {
+                    // Not logged in, this is expected behavior for guests
+                    console.log("User not logged in (guest mode)");
+                    return;
+                }
+
+                if (!res.ok) {
+                    throw new Error(`Auth check failed: ${res.status}`);
+                }
+
                 const data = await res.json();
                 if (data && data.googleId) {
                     setUser(data);
@@ -44,7 +57,8 @@ export const MusicProvider = ({ children }) => {
                     }
                 }
             } catch (err) {
-                console.error("Failed to fetch user:", err);
+                // Only log actual network/server errors, not auth failures
+                console.error("Failed to fetch user session:", err);
             }
         };
         fetchUser();
@@ -214,7 +228,7 @@ export const MusicProvider = ({ children }) => {
         setRepeat(prev => prev === 'off' ? 'all' : prev === 'all' ? 'one' : 'off');
     };
 
-    const API_URL = import.meta.env.VITE_API_URL;
+
 
     const autoPlayRecommended = async (current) => {
         if (!current) return;

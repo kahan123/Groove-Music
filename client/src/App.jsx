@@ -15,6 +15,8 @@ function AppContent() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
   const navigate = (newView) => {
     if (newView === view) return;
     const newHistory = history.slice(0, historyIndex + 1);
@@ -135,7 +137,7 @@ function AppContent() {
                       zIndex: 999
                     }}>
                       <button
-                        onClick={() => window.location.href = `${import.meta.env.VITE_API_URL}/api/logout`}
+                        onClick={() => window.location.href = `${API_URL}/api/logout`}
                         style={{
                           display: 'flex',
                           alignItems: 'center',
@@ -163,7 +165,7 @@ function AppContent() {
               <div
                 className="user-profile"
                 title="Login with Google"
-                onClick={() => window.location.href = `${import.meta.env.VITE_API_URL}/auth/google`}
+                onClick={() => window.location.href = `${API_URL}/auth/google`}
               >
                 <User size={24} color="#b3b3b3" />
               </div>
