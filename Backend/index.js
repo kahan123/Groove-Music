@@ -21,22 +21,26 @@ const binaryPath = process.platform === 'win32'
     ? path.join(__dirname, binaryName)
     : path.join('/tmp', binaryName);
 
-(async () => {
+const ensureBinary = async () => {
     // on Vercel/Linux, we might need to redownload if /tmp was cleared (ephemeral)
     if (!fs.existsSync(binaryPath)) {
         console.log(`Downloading yt-dlp binary (${binaryName}) to ${binaryPath}...`);
+        try {
+            // We must specifically ask for the 'yt-dlp_linux' asset on Linux
+            await YTDlpWrap.downloadFromGithub(binaryPath, undefined, binaryName);
+            console.log('Downloaded yt-dlp binary');
 
-        // We must specifically ask for the 'yt-dlp_linux' asset on Linux
-        await YTDlpWrap.downloadFromGithub(binaryPath, undefined, binaryName);
-        console.log('Downloaded yt-dlp binary');
-
-        // Ensure executable permissions on Linux/Unix
-        if (process.platform !== 'win32') {
-            fs.chmodSync(binaryPath, '755');
+            // Ensure executable permissions on Linux/Unix
+            if (process.platform !== 'win32') {
+                fs.chmodSync(binaryPath, '755');
+            }
+        } catch (err) {
+            console.error("Failed to download binary:", err);
+            throw err;
         }
     }
     ytDlpWrap.setBinaryPath(binaryPath);
-})();
+};
 
 const axios = require('axios');
 
@@ -192,6 +196,8 @@ app.get('/song', async (req, res) => {
     console.log(`Searching for: ${songName}`);
 
     try {
+        await ensureBinary();
+
         const r = await yts(songName);
         const videos = r.videos;
 
