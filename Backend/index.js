@@ -12,9 +12,11 @@ app.use(express.json());
 
 const CLIENT_URL = process.env.CLIENT_URL;
 
+// Vercel/Linux requires the STANDALONE 
+// binary (yt-dlp_linux) because it doesn't have Python installed.
+// Only the file named 'yt-dlp' is a Python script script, which fails.
+const binaryName = process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp_linux';
 const ytDlpWrap = new YTDlpWrap();
-// Vercel only allows writing to /tmp
-const binaryName = process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp';
 const binaryPath = process.platform === 'win32'
     ? path.join(__dirname, binaryName)
     : path.join('/tmp', binaryName);
@@ -22,8 +24,10 @@ const binaryPath = process.platform === 'win32'
 (async () => {
     // on Vercel/Linux, we might need to redownload if /tmp was cleared (ephemeral)
     if (!fs.existsSync(binaryPath)) {
-        console.log(`Downloading yt-dlp binary to ${binaryPath}...`);
-        await YTDlpWrap.downloadFromGithub(binaryPath);
+        console.log(`Downloading yt-dlp binary (${binaryName}) to ${binaryPath}...`);
+
+        // We must specifically ask for the 'yt-dlp_linux' asset on Linux
+        await YTDlpWrap.downloadFromGithub(binaryPath, undefined, binaryName);
         console.log('Downloaded yt-dlp binary');
 
         // Ensure executable permissions on Linux/Unix
@@ -198,20 +202,22 @@ app.get('/song', async (req, res) => {
         const video = videos[0];
         console.log(`Found video: ${video.title} (${video.url})`);
 
-        // Get direct playback URL using -g flag
-        // This allows the browser to handle Range requests directly for seeking
-        const directUrl = await ytDlpWrap.execPromise([
+        console.log(`Streaming (yt-dlp): ${video.title}`);
+
+        // Use yt-dlp to stream directly (bypasses 403s better than axios)
+        res.setHeader('Content-Type', 'audio/mpeg');
+
+        const stream = ytDlpWrap.execStream([
             video.url,
-            '-g',
             '-f', 'bestaudio'
         ]);
 
-        if (directUrl) {
-            console.log(`Redirecting to direct stream: ${video.title}`);
-            res.redirect(directUrl.trim());
-        } else {
-            throw new Error("No playback URL found");
-        }
+        stream.pipe(res);
+
+        stream.on('error', (err) => {
+            console.error('Stream Error:', err);
+            if (!res.headersSent) res.status(500).send(err.message);
+        });
 
     } catch (err) {
         console.error('Search Error:', err);
