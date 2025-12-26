@@ -26,9 +26,27 @@ const ensureBinary = async () => {
     if (!fs.existsSync(binaryPath)) {
         console.log(`Downloading yt-dlp binary (${binaryName}) to ${binaryPath}...`);
         try {
-            // We must specifically ask for the 'yt-dlp_linux' asset on Linux
-            await YTDlpWrap.downloadFromGithub(binaryPath, undefined, binaryName);
-            console.log('Downloaded yt-dlp binary');
+            // Manual download to ensure we get exactly the standalone binary
+            // bypassing any potential logic errors in the wrapper library
+            const downloadUrl = process.platform === 'win32'
+                ? 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe'
+                : 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux';
+
+            const response = await axios({
+                url: downloadUrl,
+                method: 'GET',
+                responseType: 'stream'
+            });
+
+            const writer = fs.createWriteStream(binaryPath);
+            response.data.pipe(writer);
+
+            await new Promise((resolve, reject) => {
+                writer.on('finish', resolve);
+                writer.on('error', reject);
+            });
+
+            console.log('Downloaded yt-dlp binary successfully');
 
             // Ensure executable permissions on Linux/Unix
             if (process.platform !== 'win32') {
