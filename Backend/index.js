@@ -97,18 +97,46 @@ app.get('/home', async (req, res) => {
     }
 });
 app.get('/recommend', async (req, res) => {
-    const { genre, artist, trackId } = req.query;
-    const searchTerm = genre || artist || 'top hits';
+    const { genre, artist, title, trackId } = req.query;
+    let searchTerm = genre;
 
     try {
-        // Search for similar music (by genre or fallback)
-        const response = await axios.get(`https://itunes.apple.com/search?term=${encodeURIComponent(searchTerm)}&media=music&entity=song&limit=40`);
+        // If no genre provided (e.g. from Liked Songs), try to resolve it from iTunes
+        if (!searchTerm && (title || artist)) {
+            try {
+                const query = title ? `${title} ${artist}` : artist;
+                const lookupRes = await axios.get(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&media=music&limit=1`);
+                if (lookupRes.data.results.length > 0) {
+                    searchTerm = lookupRes.data.results[0].primaryGenreName;
+                    console.log(`Resolved genre for "${title}": ${searchTerm}`);
+                }
+            } catch (e) {
+                console.error("Genre lookup failed:", e.message);
+            }
+        }
+
+        // Fallback
+        if (!searchTerm) {
+            searchTerm = 'top hits';
+        }
+
+        console.log(`Recommending based on: ${searchTerm}`);
+
+        // Search for similar music (mostly by genre)
+        const response = await axios.get(`https://itunes.apple.com/search?term=${encodeURIComponent(searchTerm)}&media=music&entity=song&limit=50`);
         let songs = formatItunesResults(response.data.results);
 
-        // Filter out current artist and track to ensure variety
-        if (artist) {
-            songs = songs.filter(s => s.artist.toLowerCase() !== artist.toLowerCase());
+        // Filter out EXACT current track (so we don't repeat immediately), but ALLOW same artist
+        if (trackId) {
+            songs = songs.filter(s => String(s.id) !== String(trackId));
         }
+
+        // Also filter out songs with exact same title to avoid duplicates/remixes
+        if (title) {
+            songs = songs.filter(s => s.title.toLowerCase() !== title.toLowerCase());
+        }
+
+        // Shuffle the results for randomness
         if (trackId) {
             songs = songs.filter(s => String(s.id) !== String(trackId));
         }
@@ -188,7 +216,7 @@ app.get('/song', async (req, res) => {
     } catch (err) {
         console.error('Search Error:', err);
         if (!res.headersSent) {
-            res.status(500).send("Error processing request");
+            res.status(500).send(`Error processing request: ${err.message}\n${err.stack}`);
         }
     }
 });

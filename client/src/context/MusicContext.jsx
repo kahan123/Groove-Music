@@ -235,7 +235,7 @@ export const MusicProvider = ({ children }) => {
         console.log("Autoplaying based on:", current.title);
         try {
             // Build query params
-            let url = `${API_URL}/recommend?trackId=${current.id}&artist=${encodeURIComponent(current.artist)}`;
+            let url = `${API_URL}/recommend?trackId=${current.id}&title=${encodeURIComponent(current.title)}&artist=${encodeURIComponent(current.artist)}`;
             if (current.genre) {
                 url += `&genre=${encodeURIComponent(current.genre)}`;
             }
