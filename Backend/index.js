@@ -261,9 +261,8 @@ app.get('/song', async (req, res) => {
             video.url,
             '-g',
             '-f', 'bestaudio',
-            '--extractor-args', 'youtube:player_client=ios',
-            // Cookies disabled to prevent invalidation issues. iOS client works well without them.
-            // ...(fs.existsSync(cookiePath) ? ['--cookies', cookiePath] : []),
+            // '--extractor-args', 'youtube:player_client=tv_embedded',
+            ...(fs.existsSync(cookiePath) ? ['--cookies', cookiePath] : []),
             '--js-runtimes', 'node'
         ];
 
