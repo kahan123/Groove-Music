@@ -604,11 +604,17 @@ app.delete('/api/playlists/:id', async (req, res) => {
 
 if (require.main === module) {
     // Serve Static Assets in Production
-    if (process.env.NODE_ENV === 'production' || process.env.NODE_ENV !== 'test') { // Default to serving if not explicit test
-        const clientBuildPath = path.join(__dirname, '../client/dist');
+    if (process.env.NODE_ENV === 'production' || process.env.NODE_ENV !== 'test') {
+        // Validation: Try serving from local 'public' first (Deployment), then fallback to sibling 'client/dist' (Local)
+        let clientBuildPath = path.join(__dirname, 'public');
+        if (!fs.existsSync(clientBuildPath)) {
+            clientBuildPath = path.join(__dirname, '../client/dist');
+        }
+
+        console.log(`Serving static files from: ${clientBuildPath}`);
         app.use(express.static(clientBuildPath));
 
-        // Handle React routing, return all requests to React app
+        // Handle React routing, return all requests to React app 
         app.get(/.*/, (req, res) => {
             // Check if we requested a file that wasn't found (to avoid returning index.html for 404 images)
             if (req.path.includes('.')) {
