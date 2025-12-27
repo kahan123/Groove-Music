@@ -116,6 +116,7 @@ const MainView = ({ view, setView }) => {
     // Home Data State
     const [shelves, setShelves] = useState([]);
     const [homeLoading, setHomeLoading] = useState(true);
+    console.log(`${API_URL}/api/home`)
 
     useEffect(() => {
         if (view === 'home' && shelves.length === 0) {

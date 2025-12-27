@@ -13,7 +13,7 @@ const CLIENT_URL = cleanUrl(process.env.CLIENT_URL);
 const SERVER_URL = cleanUrl(process.env.SERVER_URL) || 'http://localhost:3000';
 
 app.use(cors({
-    origin: CLIENT_URL || 'http://localhost:5173',
+    origin: [CLIENT_URL, 'http://localhost:5173', 'http://localhost:3000'].filter(Boolean),
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
