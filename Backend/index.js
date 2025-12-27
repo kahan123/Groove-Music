@@ -608,7 +608,7 @@ if (require.main === module) {
         // Validation: Try serving from local 'public' first (Deployment), then fallback to sibling 'client/dist' (Local)
         let clientBuildPath = path.join(__dirname, 'public');
         if (!fs.existsSync(clientBuildPath)) {
-            clientBuildPath = path.join(__dirname, '../client/dist');
+            clientBuildPath = path.join(__dirname, 'client/dist');
         }
 
         console.log(`Serving static files from: ${clientBuildPath}`);
