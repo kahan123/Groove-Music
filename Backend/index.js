@@ -358,6 +358,7 @@ app.set('trust proxy', 1);
 
 // Cooke Session
 const isProduction = process.env.NODE_ENV === 'production' || (CLIENT_URL && !CLIENT_URL.includes('localhost'));
+console.log(`[DEBUG] Cookie Config - isProduction: ${isProduction}, SameSite: ${isProduction ? 'none' : 'lax'}, Secure: ${isProduction}`);
 
 app.use(cookieSession({
     maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
@@ -365,6 +366,7 @@ app.use(cookieSession({
     sameSite: isProduction ? 'none' : 'lax',
     secure: isProduction, // Must be true for sameSite: 'none'
     httpOnly: true,
+    // domain: undefined // let it default to current domain
 }));
 
 // Shim for passport 0.6+ compatibility with cookie-session
@@ -444,6 +446,10 @@ app.get('/auth/google/callback',
 );
 
 app.get('/api/current_user', (req, res) => {
+    console.log("[DEBUG] /api/current_user hit");
+    console.log("[DEBUG] Session:", req.session);
+    console.log("[DEBUG] User:", req.user ? req.user.id : "null");
+    console.log("[DEBUG] Cookies:", req.headers.cookie);
     res.send(req.user);
 });
 
