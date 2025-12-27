@@ -222,7 +222,7 @@ function AppContent() {
 
       </main>
 
-      <PlayerBar />
+      <PlayerBar setView={navigate} />
     </div>
   );
 }

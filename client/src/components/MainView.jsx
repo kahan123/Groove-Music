@@ -4,6 +4,7 @@ import { useMusic } from '../context/MusicContext';
 import { Play, Pause, Heart, Search, Trash2, ChevronLeft, ChevronRight, MoreHorizontal } from 'lucide-react';
 import PlaylistMenu from './PlaylistMenu';
 import ContextMenu from './ContextMenu';
+import QueueView from './QueueView';
 
 const ScrollableSection = ({ title, children }) => {
     const scrollRef = useRef(null);
@@ -636,6 +637,7 @@ const MainView = ({ view, setView }) => {
         case 'search': return <>{renderSearch()}{renderMenu()}{renderContextMenu()}</>;
         case 'explore': return <>{renderExplore()}{renderMenu()}{renderContextMenu()}</>;
         case 'home': return <>{renderHome()}{renderMenu()}{renderContextMenu()}</>;
+        case 'queue': return <>{<QueueView />}{renderMenu()}{renderContextMenu()}</>;
         default: return <>{renderPlaylistView()}{renderMenu()}{renderContextMenu()}</>;
     }
 };

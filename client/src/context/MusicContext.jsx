@@ -33,15 +33,27 @@ export const MusicProvider = ({ children }) => {
 
                 if (res.status === 401 || res.status === 403) {
                     // Not logged in, this is expected behavior for guests
-
                     return;
+                }
+
+                // Check for empty response before parsing JSON
+                const text = await res.text();
+                if (!text) {
+                    // Empty response, treat as not logged in or no user data
+                    return;
+                }
+
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch (e) {
+                    console.error("Failed to parse user data:", e);
+                    return; // If parsing fails, stop here
                 }
 
                 if (!res.ok) {
                     throw new Error(`Auth check failed: ${res.status}`);
                 }
-
-                const data = await res.json();
                 if (data && data.googleId) {
                     setUser(data);
                     // Sync initial state

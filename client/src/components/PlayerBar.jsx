@@ -1,10 +1,11 @@
 import React, { useEffect, useRef } from 'react';
 import { useMusic } from '../context/MusicContext';
-import { Play, Pause, SkipBack, SkipForward, Volume2, Repeat, Shuffle, Loader, Radio, Heart, PlusCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Volume2, Repeat, Shuffle, Loader, Radio, Heart, PlusCircle, ChevronDown, ChevronUp, ListMusic } from 'lucide-react';
+
 import AddToPlaylistModal from './AddToPlaylistModal';
 import { useToast } from '../context/ToastContext';
 
-const PlayerBar = () => {
+const PlayerBar = ({ setView }) => {
     const { currentSong, isPlaying, setIsPlaying, isBuffering, setIsBuffering, togglePlay, nextSong, prevSong, startRadio, shuffle, toggleShuffle, repeat, toggleRepeat, likedSongs, toggleLike, playlists, user, addToPlaylist } = useMusic();
     const { error } = useToast();
     const audioRef = useRef(null);
@@ -254,6 +255,18 @@ const PlayerBar = () => {
             </div>
 
             <div className="volume-controls">
+                <button
+                    className="control-btn"
+                    title="Queue"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        // If setView is passed, use it. 
+                        if (setView) setView('queue');
+                    }}
+                    style={{ marginRight: '8px' }}
+                >
+                    <ListMusic size={20} color="#b3b3b3" />
+                </button>
                 <Volume2 size={20} color="#b3b3b3" />
                 <div className="seek-bar-wrapper" style={{ width: '100px', flex: 'none' }}>
                     {/* Visual Track */}
