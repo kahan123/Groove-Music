@@ -7,7 +7,10 @@ const path = require('path');
 const cors = require('cors');
 
 const app = express();
-const CLIENT_URL = process.env.CLIENT_URL;
+const cleanUrl = (url) => url ? url.replace(/\/$/, '') : '';
+
+const CLIENT_URL = cleanUrl(process.env.CLIENT_URL);
+const SERVER_URL = cleanUrl(process.env.SERVER_URL) || 'http://localhost:3000';
 
 app.use(cors({
     origin: CLIENT_URL || 'http://localhost:5173',
@@ -15,6 +18,12 @@ app.use(cors({
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+console.log("Environment Config:");
+console.log("CLIENT_URL:", CLIENT_URL);
+console.log("SERVER_URL:", SERVER_URL);
+console.log("NODE_ENV:", process.env.NODE_ENV);
+
 app.use(express.json());
 
 // Vercel/Linux requires the STANDALONE 
@@ -31,7 +40,7 @@ const cookiePath = process.platform === 'win32'
     : path.join('/tmp', 'cookies.txt');
 
 const ensureCookies = () => {
-    console.log(process.env.YOUTUBE_COOKIES);
+    // console.log(process.env.YOUTUBE_COOKIES); // Don't log full cookies for security
     if (process.env.YOUTUBE_COOKIES) {
         // Write the cookies to a file
         fs.writeFileSync(cookiePath, process.env.YOUTUBE_COOKIES);
@@ -348,7 +357,7 @@ const User = require('./models/User');
 app.set('trust proxy', 1);
 
 // Cooke Session
-const isProduction = process.env.NODE_ENV === 'production' || (process.env.CLIENT_URL && !process.env.CLIENT_URL.includes('localhost'));
+const isProduction = process.env.NODE_ENV === 'production' || (CLIENT_URL && !CLIENT_URL.includes('localhost'));
 
 app.use(cookieSession({
     maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
@@ -389,7 +398,7 @@ passport.deserializeUser((id, done) => {
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: `${process.env.SERVER_URL || 'http://localhost:3000'}/auth/google/callback`
+    callbackURL: `${SERVER_URL}/auth/google/callback`
 }, async (accessToken, refreshToken, profile, done) => {
     // Check if user exists
     const existingUser = await User.findOne({ googleId: profile.id });
