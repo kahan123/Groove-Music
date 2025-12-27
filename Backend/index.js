@@ -21,6 +21,21 @@ const binaryPath = process.platform === 'win32'
     ? path.join(__dirname, binaryName)
     : path.join('/tmp', binaryName);
 
+const cookiePath = process.platform === 'win32'
+    ? path.join(__dirname, 'cookies.txt')
+    : path.join('/tmp', 'cookies.txt');
+
+const ensureCookies = () => {
+    console.log(process.env.YOUTUBE_COOKIES);
+    if (process.env.YOUTUBE_COOKIES) {
+        // Write the cookies to a file
+        fs.writeFileSync(cookiePath, process.env.YOUTUBE_COOKIES);
+        console.log(`Cookies written to ${cookiePath}`);
+    } else {
+        console.log("No YOUTUBE_COOKIES env var found. YouTube might block requests.");
+    }
+};
+
 const ensureBinary = async () => {
     // on Vercel/Linux, we might need to redownload if /tmp was cleared (ephemeral)
     if (!fs.existsSync(binaryPath)) {
@@ -233,11 +248,22 @@ app.get('/song', async (req, res) => {
         // to the direct URL if we remove the IP check, OR we proxy range-by-range.
 
         // Strategy: Get the Direct URL using -g and proxy the specific chunk requested by the browser.
-        const directUrl = await ytDlpWrap.execPromise([
+
+        // Ensure cookies exist if provided
+        ensureCookies();
+
+        const args = [
             video.url,
             '-g',
-            '-f', 'bestaudio'
-        ]);
+            '-f', 'bestaudio',
+            '--cookies', cookiePath,
+            '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            '--js-runtimes', 'node'
+        ];
+
+        console.log(`Running yt-dlp with args: ${JSON.stringify(args)}`);
+
+        const directUrl = await ytDlpWrap.execPromise(args);
 
         if (!directUrl) throw new Error("Failed to get direct URL");
 
