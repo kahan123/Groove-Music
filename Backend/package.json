@@ -5,9 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "nodemon index",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "cd client && npm install && npm run build",
-    "vercel-build": "cd client && npm install && npm run build && mkdir -p ../public && cp -r dist/* ../public"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
