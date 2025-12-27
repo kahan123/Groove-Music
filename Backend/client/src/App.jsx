@@ -16,7 +16,11 @@ function AppContent() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+  // Use VITE_API_URL if set. 
+  // Otherwise:
+  // - In Development: default to localhost:3000
+  // - In Production (Built): default to '' (relative path, same origin)
+  const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:3000' : '');
 
   const navigate = (newView) => {
     if (newView === view) return;
