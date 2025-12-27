@@ -66,7 +66,7 @@ const MainView = ({ view, setView }) => {
     const [loading, setLoading] = useState(false);
     const [contextMenu, setContextMenu] = useState(null); // { x, y, song, playlistId }
 
-    const API_URL = import.meta.env.VITE_API_URL;
+    const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:3000' : '');
 
 
 
