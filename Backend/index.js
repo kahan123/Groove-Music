@@ -353,8 +353,8 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const cookieSession = require('cookie-session');
 const User = require('./models/User');
 
-// Trust proxy for Vercel/Fly/Render
-app.set('trust proxy', 1);
+// Trust proxy for Vercel/Fly/Render (set to true to trust all proxies in front)
+app.set('trust proxy', true);
 
 // Cooke Session
 const isProduction = process.env.NODE_ENV === 'production' || (CLIENT_URL && !CLIENT_URL.includes('localhost'));
@@ -366,7 +366,8 @@ app.use(cookieSession({
     sameSite: isProduction ? 'none' : 'lax',
     secure: isProduction, // Must be true for sameSite: 'none'
     httpOnly: true,
-    // domain: undefined // let it default to current domain
+    // proxy: true // trusting the reverse proxy when setting secure cookies (important for Vercel)
+    secureProxy: true // cookie-session specific option for proxy trust if not using express trust proxy
 }));
 
 // Shim for passport 0.6+ compatibility with cookie-session
