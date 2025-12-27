@@ -21,6 +21,7 @@ function AppContent() {
   // - In Development: default to localhost:3000
   // - In Production (Built): default to '' (relative path, same origin)
   const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:3000' : '');
+  console.log(API_URL);
 
   const navigate = (newView) => {
     if (newView === view) return;

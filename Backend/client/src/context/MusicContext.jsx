@@ -442,7 +442,6 @@ export const MusicProvider = ({ children }) => {
             createPlaylist,
             updatePlaylist,
             deletePlaylist,
-            deletePlaylist,
             removeSongFromPlaylist,
             logout
         }}>
