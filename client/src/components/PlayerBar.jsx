@@ -186,7 +186,7 @@ const PlayerBar = () => {
                 ref={audioRef}
                 src={getStreamUrl(currentSong)}
                 onTimeUpdate={handleTimeUpdate}
-                onEnded={() => setIsPlaying(false)}
+                onEnded={nextSong}
                 onLoadedMetadata={(e) => setDuration(e.target.duration)}
                 onWaiting={() => setIsBuffering && setIsBuffering(true)}
                 onPlaying={() => setIsBuffering && setIsBuffering(false)}

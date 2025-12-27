@@ -3,6 +3,9 @@
   grid-template-columns: 240px 1fr;
   grid-template-rows: 1fr var(--player-height);
   height: 100vh;
+  /* Fallback */
+  height: 100dvh;
+  /* Mobile friendly viewport height */
   width: 100vw;
   background: var(--bg-color);
   color: var(--text-primary);
@@ -1213,7 +1216,8 @@
   .app-layout {
     grid-template-columns: 1fr;
     /* Single column */
-    grid-template-rows: 1fr var(--player-height);
+    grid-template-rows: 1fr;
+    /* Remove player row, as it will be fixed */
   }
 
   /* Sidebar - Off Canvas */
@@ -1320,12 +1324,25 @@
 
   /* Player Bar Compacting */
   .player-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    z-index: 900;
     padding: 0 12px;
     height: var(--player-height);
     display: flex;
     justify-content: space-between;
     align-items: center;
     gap: 8px;
+    background: var(--surface-color);
+    /* Ensure background is solid */
+    border-top: 1px solid #333;
+  }
+
+  /* Add padding to bottom of content so it clears the fixed player */
+  .main-content {
+    padding-bottom: var(--player-height);
   }
 
   /* Left: Song Info */
