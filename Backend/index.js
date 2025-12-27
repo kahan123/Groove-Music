@@ -609,7 +609,7 @@ if (require.main === module) {
         app.use(express.static(clientBuildPath));
 
         // Handle React routing, return all requests to React app
-        app.get('*', (req, res) => {
+        app.get('/(.*)', (req, res) => {
             // Check if we requested a file that wasn't found (to avoid returning index.html for 404 images)
             if (req.path.includes('.')) {
                 return res.sendStatus(404);
