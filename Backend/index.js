@@ -261,8 +261,9 @@ app.get('/song', async (req, res) => {
             video.url,
             '-g',
             '-f', 'bestaudio',
-            '--cookies', cookiePath,
-            '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            '--extractor-args', 'youtube:player_client=android',
+            // Cookies are still useful if valid, but Android client helps bypass some checks
+            ...(fs.existsSync(cookiePath) ? ['--cookies', cookiePath] : []),
             '--js-runtimes', 'node'
         ];
 
