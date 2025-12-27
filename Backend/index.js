@@ -447,8 +447,9 @@ app.get('/auth/google/callback',
 
 app.get('/api/current_user', (req, res) => {
     console.log("[DEBUG] /api/current_user hit");
-    console.log("[DEBUG] Session:", req.session);
-    console.log("[DEBUG] User:", req.user ? req.user.id : "null");
+    console.log("[DEBUG] Protocol:", req.protocol);
+    console.log("[DEBUG] Secure:", req.secure);
+    console.log("[DEBUG] X-Forwarded-Proto:", req.get('X-Forwarded-Proto'));
     console.log("[DEBUG] Cookies:", req.headers.cookie);
     res.send(req.user);
 });
