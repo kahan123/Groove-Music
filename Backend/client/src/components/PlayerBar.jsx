@@ -70,7 +70,7 @@ const PlayerBar = ({ setView }) => {
         // Construct a specific query for YouTube to find the right audio
         const query = `${song.title} ${song.artist} audio`;
         const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:3000' : '');
-        return `${API_URL}/song?name=${encodeURIComponent(query)}`;
+        return `${API_URL}/api/song?name=${encodeURIComponent(query)}`;
     };
 
     return (

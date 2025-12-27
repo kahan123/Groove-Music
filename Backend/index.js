@@ -105,7 +105,7 @@ const formatItunesResults = (results) => {
 };
 
 
-app.get('/search', async (req, res) => {
+app.get('/api/search', async (req, res) => {
     const query = req.query.q;
     if (!query) return res.status(400).send("Query 'q' is required");
 
@@ -119,7 +119,7 @@ app.get('/search', async (req, res) => {
     }
 });
 
-app.get('/home', async (req, res) => {
+app.get('/api/home', async (req, res) => {
     console.log("req recieved")
     try {
         const categories = [
@@ -151,7 +151,7 @@ app.get('/home', async (req, res) => {
         res.status(500).json({ error: "Failed to load home" });
     }
 });
-app.get('/recommend', async (req, res) => {
+app.get('/api/recommend', async (req, res) => {
     const { genre, artist, title, trackId } = req.query;
     let searchTerm = genre;
 
@@ -211,7 +211,7 @@ app.get('/recommend', async (req, res) => {
 });
 
 // Radio Endpoint (Artist Mix)
-app.get('/radio', async (req, res) => {
+app.get('/api/radio', async (req, res) => {
     const artist = req.query.artist;
     if (!artist) return res.status(400).send("Query 'artist' is required");
 
@@ -234,7 +234,7 @@ app.get('/radio', async (req, res) => {
     }
 });
 
-app.get('/song', async (req, res) => {
+app.get('/api/song', async (req, res) => {
     const songName = req.query.name;
     if (!songName) {
         return res.status(400).send("Please provide a song name query parameter 'name'");

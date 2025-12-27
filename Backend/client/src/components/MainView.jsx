@@ -88,7 +88,7 @@ const MainView = ({ view, setView }) => {
         // We do want to set loading though.
         setLoading(true);
         try {
-            const res = await fetch(`${API_URL}/search?q=${encodeURIComponent(term)}`);
+            const res = await fetch(`${API_URL}/api/search?q=${encodeURIComponent(term)}`);
             const data = await res.json();
             setResults(data);
         } catch (err) {
@@ -119,7 +119,7 @@ const MainView = ({ view, setView }) => {
 
     useEffect(() => {
         if (view === 'home' && shelves.length === 0) {
-            fetch(`${API_URL}/home`)
+            fetch(`${API_URL}/api/home`)
                 .then(res => res.json())
                 .then(data => {
                     setShelves(data);

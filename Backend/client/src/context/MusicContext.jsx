@@ -295,7 +295,7 @@ export const MusicProvider = ({ children }) => {
 
         try {
             // Build query params
-            let url = `${API_URL}/recommend?trackId=${current.id}&title=${encodeURIComponent(current.title)}&artist=${encodeURIComponent(current.artist)}`;
+            let url = `${API_URL}/api/recommend?trackId=${current.id}&title=${encodeURIComponent(current.title)}&artist=${encodeURIComponent(current.artist)}`;
             if (current.genre) {
                 url += `&genre=${encodeURIComponent(current.genre)}`;
             }
@@ -408,7 +408,7 @@ export const MusicProvider = ({ children }) => {
     const startRadio = async (artist) => {
         if (!artist) return;
         try {
-            const res = await fetch(`${API_URL}/radio?artist=${encodeURIComponent(artist)}`);
+            const res = await fetch(`${API_URL}/api/radio?artist=${encodeURIComponent(artist)}`);
             const data = await res.json();
             setQueue(data);
 
