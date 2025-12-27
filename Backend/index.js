@@ -26,6 +26,15 @@ console.log("NODE_ENV:", process.env.NODE_ENV);
 
 app.use(express.json());
 
+// DEBUG LOGGER - VERIFY REQUESTS
+app.use((req, res, next) => {
+    console.log(`[DEBUG] Incoming: ${req.method} ${req.url}`);
+    next();
+});
+
+// DEBUG ENDPOINT
+app.get('/api/version', (req, res) => res.send({ version: "1.0.0", context: "api-refactor" }));
+
 // Vercel/Linux requires the STANDALONE 
 // binary (yt-dlp_linux) because it doesn't have Python installed.
 // Only the file named 'yt-dlp' is a Python script script, which fails.
