@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { User, ChevronLeft, ChevronRight, LogOut, Menu, X } from 'lucide-react';
 import { MusicProvider, useMusic } from './context/MusicContext';
 import { ToastProvider } from './context/ToastContext';

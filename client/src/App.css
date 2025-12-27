@@ -1703,3 +1703,29 @@
   transform: scale(0.95);
   background-color: #169c46;
 }
+
+/* Context Menu */
+.context-menu {
+  position: fixed;
+  z-index: 10000;
+  background-color: #282828;
+  border-radius: 4px;
+  box-shadow: 0 16px 24px rgba(0, 0, 0, 0.5);
+  padding: 4px;
+  min-width: 160px;
+  border: 1px solid #3e3e3e;
+}
+
+.context-menu-item {
+  padding: 10px 12px;
+  font-size: 14px;
+  color: #fff;
+  cursor: pointer;
+  border-radius: 2px;
+  display: flex;
+  align-items: center;
+}
+
+.context-menu-item:hover {
+  background-color: #3e3e3e;
+}
