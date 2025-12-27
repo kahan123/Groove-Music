@@ -344,10 +344,15 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const cookieSession = require('cookie-session');
 const User = require('./models/User');
 
+// Trust proxy for Vercel/Fly/Render
+app.set('trust proxy', 1);
+
 // Cooke Session
 app.use(cookieSession({
     maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-    keys: [process.env.COOKIE_KEY]
+    keys: [process.env.COOKIE_KEY],
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // Allow cross-site cookies in prod
+    secure: process.env.NODE_ENV === 'production' // Only send over HTTPS in prod
 }));
 
 // Shim for passport 0.6+ compatibility with cookie-session
