@@ -23,59 +23,75 @@ export const MusicProvider = ({ children }) => {
 
     const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
-    useEffect(() => {
-        const fetchUser = async () => {
-            try {
-                // Ensure credentials are sent to get the cookie
-                const res = await fetch(`${API_URL}/api/current_user`, {
-                    credentials: 'include'
-                });
+    const fetchUser = async () => {
+        try {
+            // Ensure credentials are sent to get the cookie
+            const res = await fetch(`${API_URL}/api/current_user`, {
+                credentials: 'include'
+            });
 
-                if (res.status === 401 || res.status === 403) {
-                    // Not logged in, this is expected behavior for guests
-                    return;
-                }
-
-                // Check for empty response before parsing JSON
-                const text = await res.text();
-                if (!text) {
-                    // Empty response, treat as not logged in or no user data
-                    return;
-                }
-
-                let data;
-                try {
-                    data = JSON.parse(text);
-                } catch (e) {
-                    console.error("Failed to parse user data:", e);
-                    return; // If parsing fails, stop here
-                }
-
-                if (!res.ok) {
-                    throw new Error(`Auth check failed: ${res.status}`);
-                }
-                if (data && data.googleId) {
-                    setUser(data);
-                    // Sync initial state
-                    if (data.likedSongs) {
-                        setLikedSongs(data.likedSongs.map(s => ({
-                            id: s.videoId,
-                            title: s.title,
-                            artist: s.artist,
-                            cover: s.cover
-                        })));
-                    }
-                    if (data.playlists) {
-                        setPlaylists(data.playlists);
-                    }
-                }
-            } catch (err) {
-                // Only log actual network/server errors, not auth failures
-                console.error("Failed to fetch user session:", err);
+            if (res.status === 401 || res.status === 403) {
+                // Not logged in, this is expected behavior for guests
+                return;
             }
-        };
+
+            // Check for empty response before parsing JSON
+            const text = await res.text();
+            if (!text) {
+                // Empty response, treat as not logged in or no user data
+                return;
+            }
+
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch (e) {
+                console.error("Failed to parse user data:", e);
+                return; // If parsing fails, stop here
+            }
+
+            if (!res.ok) {
+                throw new Error(`Auth check failed: ${res.status}`);
+            }
+            if (data && data.googleId) {
+                setUser(data);
+                // Sync initial state
+                if (data.likedSongs) {
+                    setLikedSongs(data.likedSongs.map(s => ({
+                        id: s.videoId,
+                        title: s.title,
+                        artist: s.artist,
+                        cover: s.cover
+                    })));
+                }
+                if (data.playlists) {
+                    setPlaylists(data.playlists);
+                }
+            }
+        } catch (err) {
+            // Only log actual network/server errors, not auth failures
+            console.error("Failed to fetch user session:", err);
+        }
+    };
+
+    useEffect(() => {
         fetchUser();
     }, []);
+
+    const logout = async () => {
+        try {
+            await fetch(`${API_URL}/api/logout`, { method: 'POST' });
+            setUser(null);
+            setLikedSongs([]);
+            setPlaylists([]);
+            window.location.href = '/';
+        } catch (err) {
+            console.error("Logout failed", err);
+        }
+    };
+
+    // Helper for auth headers
+
 
     const toggleLike = async (song) => {
         if (!user) {
@@ -422,7 +438,9 @@ export const MusicProvider = ({ children }) => {
             createPlaylist,
             updatePlaylist,
             deletePlaylist,
-            removeSongFromPlaylist
+            deletePlaylist,
+            removeSongFromPlaylist,
+            logout
         }}>
             {children}
         </MusicContext.Provider>

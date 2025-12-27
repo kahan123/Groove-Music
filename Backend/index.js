@@ -560,6 +560,7 @@ app.delete('/api/playlists/:id', async (req, res) => {
         console.log('[DELETE] No user in request');
         return res.status(401).send('Login required');
     }
+
     try {
         const user = await User.findById(req.user.id);
         if (!user) {
