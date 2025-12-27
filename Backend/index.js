@@ -603,6 +603,21 @@ app.delete('/api/playlists/:id', async (req, res) => {
 });
 
 if (require.main === module) {
+    // Serve Static Assets in Production
+    if (process.env.NODE_ENV === 'production' || process.env.NODE_ENV !== 'test') { // Default to serving if not explicit test
+        const clientBuildPath = path.join(__dirname, '../client/dist');
+        app.use(express.static(clientBuildPath));
+
+        // Handle React routing, return all requests to React app
+        app.get('*', (req, res) => {
+            // Check if we requested a file that wasn't found (to avoid returning index.html for 404 images)
+            if (req.path.includes('.')) {
+                return res.sendStatus(404);
+            }
+            res.sendFile(path.join(clientBuildPath, 'index.html'));
+        });
+    }
+
     app.listen(PORT, () => {
         console.log(`Server is running on http://localhost:${PORT}`);
     });
