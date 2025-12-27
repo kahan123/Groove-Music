@@ -7,10 +7,15 @@ const path = require('path');
 const cors = require('cors');
 
 const app = express();
-app.use(cors());
-app.use(express.json());
-
 const CLIENT_URL = process.env.CLIENT_URL;
+
+app.use(cors({
+    origin: CLIENT_URL || 'http://localhost:5173',
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
+app.use(express.json());
 
 // Vercel/Linux requires the STANDALONE 
 // binary (yt-dlp_linux) because it doesn't have Python installed.
@@ -409,8 +414,14 @@ app.get('/auth/google', passport.authenticate('google', {
 }));
 
 app.get('/auth/google/callback',
+    (req, res, next) => {
+        console.log("Auth Callback Hit");
+        next();
+    },
     passport.authenticate('google', { failureRedirect: '/' }),
     (req, res) => {
+        console.log("Auth Success, redirecting to:", CLIENT_URL);
+        console.log("User:", req.user ? req.user.id : "No User");
         res.redirect(CLIENT_URL); // Redirect to frontend
     }
 );

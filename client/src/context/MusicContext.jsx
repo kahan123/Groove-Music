@@ -19,6 +19,7 @@ export const MusicProvider = ({ children }) => {
     const [repeat, setRepeat] = useState('off'); // 'off', 'one', 'all'
     const [history, setHistory] = useState([]);
     const [likedSongs, setLikedSongs] = useState([]);
+    const [originalContext, setOriginalContext] = useState({ type: 'single', songs: [] });
 
     const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -32,7 +33,7 @@ export const MusicProvider = ({ children }) => {
 
                 if (res.status === 401 || res.status === 403) {
                     // Not logged in, this is expected behavior for guests
-                    console.log("User not logged in (guest mode)");
+
                     return;
                 }
 
@@ -186,7 +187,7 @@ export const MusicProvider = ({ children }) => {
     const deletePlaylist = async (id) => {
         if (!user) return;
         try {
-            console.log(`Deleting playlist ${id}...`);
+
             const res = await fetch(`${API_URL}/api/playlists/${id}`, {
                 method: 'DELETE',
                 credentials: 'include'
@@ -206,7 +207,7 @@ export const MusicProvider = ({ children }) => {
         }
     };
 
-    const playSong = (song) => {
+    const playSong = (song, contextSongs = null) => {
         if (!song) return;
         if (currentSong && currentSong.id === song.id) {
             togglePlay();
@@ -218,6 +219,33 @@ export const MusicProvider = ({ children }) => {
         setCurrentSong(song);
         setIsPlaying(true);
         setIsBuffering(true);
+
+        // Context Management
+        if (contextSongs && Array.isArray(contextSongs)) {
+            // Playlist Context
+            const idx = contextSongs.findIndex(s => s.videoId === song.id || s.id === song.id);
+            if (idx !== -1) {
+                const newQueue = contextSongs.slice(idx + 1).map(s => ({
+                    id: s.videoId || s.id,
+                    title: s.title,
+                    artist: s.artist,
+                    cover: s.cover
+                }));
+                setQueue(newQueue);
+                setOriginalContext({
+                    type: 'playlist', songs: contextSongs.map(s => ({
+                        id: s.videoId || s.id,
+                        title: s.title,
+                        artist: s.artist,
+                        cover: s.cover
+                    }))
+                });
+            }
+        } else {
+            // Single/Search Context
+            setQueue([]);
+            setOriginalContext({ type: 'single', songs: [] });
+        }
     };
 
     const togglePlay = () => setIsPlaying(prev => !prev);
@@ -232,7 +260,7 @@ export const MusicProvider = ({ children }) => {
 
     const autoPlayRecommended = async (current) => {
         if (!current) return;
-        console.log("Autoplaying based on:", current.title);
+
         try {
             // Build query params
             let url = `${API_URL}/recommend?trackId=${current.id}&title=${encodeURIComponent(current.title)}&artist=${encodeURIComponent(current.artist)}`;
@@ -244,7 +272,7 @@ export const MusicProvider = ({ children }) => {
             const data = await res.json();
 
             if (data && data.length > 0) {
-                console.log("Queueing recommended:", data.length);
+
                 setQueue(data);
                 // Also optionally play the first one immediately if queue was empty
                 const next = data[0];
@@ -288,15 +316,39 @@ export const MusicProvider = ({ children }) => {
             setIsPlaying(true);
         } else {
             // Queue empty - check logic
-            if (repeat === 'all' && history.length > 0) {
-                // Loop back to history? Simple implementation: just Autoplay
-                if (currentSong) autoPlayRecommended(currentSong);
-                else setIsPlaying(false);
-            } else {
-                // Try autoplay
-                if (currentSong) autoPlayRecommended(currentSong);
-                else setIsPlaying(false);
+            if (repeat === 'all') {
+                if (originalContext.type === 'playlist' && originalContext.songs.length > 0) {
+                    // Loop Playlist
+
+                    const firstSong = originalContext.songs[0];
+                    const newQueue = originalContext.songs.slice(1);
+                    setQueue(newQueue); // Re-fill queue
+                    if (currentSong) setHistory(prev => [...prev, currentSong]);
+                    setCurrentSong(firstSong);
+                    setIsPlaying(true);
+                    return;
+                } else if (originalContext.type === 'single') {
+                    // Loop Single Song (Same as Repeat One effectively for single context)
+                    if (currentSong) {
+                        if (audioRef.current) {
+                            audioRef.current.currentTime = 0;
+                            audioRef.current.play();
+                        }
+                        return;
+                    }
+                }
             }
+
+            // If checking history or just default auto-play
+            if (repeat === 'all' && history.length > 0 && originalContext.type !== 'playlist') {
+                // Fallback if context lost but history exists? 
+                // Actually logic above handles 'playlist' type.
+                // If random bunch of songs, maybe nothing comes here.
+            }
+
+            // Try autoplay recommended as last resort
+            if (currentSong) autoPlayRecommended(currentSong);
+            else setIsPlaying(false);
         }
     };
 
@@ -327,7 +379,7 @@ export const MusicProvider = ({ children }) => {
             const res = await fetch(`${API_URL}/radio?artist=${encodeURIComponent(artist)}`);
             const data = await res.json();
             setQueue(data);
-            console.log("Radio started for:", artist);
+
         } catch (err) {
             console.error("Radio start failed", err);
         }

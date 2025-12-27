@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { useMusic } from '../context/MusicContext';
-import { Play, Pause, SkipBack, SkipForward, Volume2, Repeat, Shuffle, Loader, Radio, Heart, PlusCircle } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Volume2, Repeat, Shuffle, Loader, Radio, Heart, PlusCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import AddToPlaylistModal from './AddToPlaylistModal';
 import { useToast } from '../context/ToastContext';
 
@@ -12,6 +12,20 @@ const PlayerBar = () => {
     const [duration, setDuration] = React.useState(0);
     const [volume, setVolume] = React.useState(1);
     const [showPlaylistModal, setShowPlaylistModal] = React.useState(false);
+    const [isFullScreen, setIsFullScreen] = React.useState(false);
+
+    // Toggle full screen on mobile
+    const toggleFullScreen = (e) => {
+        // Only on mobile
+        if (window.innerWidth <= 768) {
+            setIsFullScreen(true);
+        }
+    };
+
+    const closeFullScreen = (e) => {
+        e.stopPropagation();
+        setIsFullScreen(false);
+    };
 
     useEffect(() => {
         if (currentSong && audioRef.current) {
@@ -58,7 +72,91 @@ const PlayerBar = () => {
     };
 
     return (
-        <footer className="player-bar">
+        <footer className={`player-bar ${isFullScreen ? 'full-screen-active' : ''}`} onClick={toggleFullScreen}>
+            {/* Full Screen Overlay */}
+            {isFullScreen && (
+                <div className="full-screen-player" onClick={(e) => e.stopPropagation()}>
+                    <div className="fs-header">
+                        <button className="fs-minimize-btn" onClick={closeFullScreen}>
+                            <ChevronDown size={28} color="white" />
+                        </button>
+                        <div className="fs-now-playing-label">Now Playing</div>
+                        <div style={{ width: 28 }}></div> {/* Spacer */}
+                    </div>
+
+                    <div className="fs-art-container">
+                        <img src={currentSong?.cover} alt="Cover" className="fs-cover-art" />
+                    </div>
+
+                    <div className="fs-track-info">
+                        <div className="fs-titles">
+                            <h2 className="fs-title">{currentSong?.title}</h2>
+                            <p className="fs-artist">{currentSong?.artist}</p>
+                        </div>
+                        <button
+                            className="fs-like-btn"
+                            onClick={(e) => { e.stopPropagation(); toggleLike(currentSong); }}
+                        >
+                            <Heart
+                                size={28}
+                                color={likedSongs.some(s => s.id === currentSong?.id) ? "#1db954" : "white"}
+                                fill={likedSongs.some(s => s.id === currentSong?.id) ? "#1db954" : "none"}
+                            />
+                        </button>
+                    </div>
+
+                    <div className="fs-progress-container">
+                        <div className="fs-seek-bar-wrapper">
+                            <div className="fs-seek-bar-bg"></div>
+                            <div
+                                className="fs-seek-bar-fill"
+                                style={{ width: `${(progress / (duration || 1)) * 100}%` }}
+                            ></div>
+                            <input
+                                type="range"
+                                min="0"
+                                max={duration || 100}
+                                value={progress}
+                                onChange={handleSeek}
+                                className="fs-seek-bar-input"
+                            />
+                        </div>
+                        <div className="fs-time-row">
+                            <span>{formatTime(progress)}</span>
+                            <span>{formatTime(duration)}</span>
+                        </div>
+                    </div>
+
+                    <div className="fs-controls">
+                        <button
+                            className={`fs-control-btn ${shuffle ? 'active-control' : ''}`}
+                            onClick={(e) => { e.stopPropagation(); toggleShuffle(); }}
+                        >
+                            <Shuffle size={24} color={shuffle ? '#1db954' : 'white'} />
+                        </button>
+                        <button className="fs-control-btn" onClick={(e) => { e.stopPropagation(); prevSong(); }}>
+                            <SkipBack size={36} fill="white" />
+                        </button>
+                        <button className="fs-play-btn" onClick={(e) => { e.stopPropagation(); togglePlay(); }}>
+                            {isBuffering ? (
+                                <Loader size={32} className="spin-anim" color="black" />
+                            ) : (
+                                isPlaying ? <Pause size={32} fill="black" /> : <Play size={32} fill="black" className="ml-1" />
+                            )}
+                        </button>
+                        <button className="fs-control-btn" onClick={(e) => { e.stopPropagation(); nextSong(); }}>
+                            <SkipForward size={36} fill="white" />
+                        </button>
+                        <button
+                            className={`fs-control-btn ${repeat !== 'off' ? 'active-control' : ''}`}
+                            onClick={(e) => { e.stopPropagation(); toggleRepeat(); }}
+                        >
+                            <Repeat size={24} color={repeat !== 'off' ? '#1db954' : 'white'} />
+                        </button>
+                    </div>
+                </div>
+            )}
+
             <div className="now-playing">
                 {currentSong ? (
                     <>
@@ -131,7 +229,7 @@ const PlayerBar = () => {
                         {repeat === 'one' && <span className="repeat-one-indicator">1</span>}
                     </button>
                 </div>
-                <div className="progress-container">
+                <div className="progress-container" onClick={(e) => e.stopPropagation()}>
                     <span className="time">{formatTime(progress)}</span>
                     <div className="seek-bar-wrapper">
                         {/* Visual Track */}

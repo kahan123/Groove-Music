@@ -1322,27 +1322,30 @@
     text-overflow: ellipsis;
   }
 
-  /* Player Bar Compacting */
+  /* Player Bar Compacting - Floating Style */
   .player-bar {
     position: fixed;
-    bottom: 0;
-    left: 0;
-    width: 100%;
+    bottom: 8px;
+    left: 8px;
+    right: 8px;
+    width: auto;
     z-index: 900;
-    padding: 0 12px;
-    height: var(--player-height);
+    padding: 8px 12px;
+    height: 60px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 8px;
-    background: var(--surface-color);
-    /* Ensure background is solid */
-    border-top: 1px solid #333;
+    gap: 12px;
+    background: #282828;
+    border-radius: 8px;
+    border-top: none;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+    overflow: hidden;
   }
 
   /* Add padding to bottom of content so it clears the fixed player */
   .main-content {
-    padding-bottom: var(--player-height);
+    padding-bottom: 100px;
   }
 
   /* Left: Song Info */
@@ -1350,64 +1353,120 @@
     width: auto;
     flex: 1;
     min-width: 0;
-    /* Allow shrinking */
+    display: flex;
+    align-items: center;
+    gap: 12px;
   }
 
   .mini-cover {
-    width: 40px;
-    height: 40px;
+    width: 42px;
+    height: 42px;
+    border-radius: 4px;
   }
 
   .track-info {
-    display: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+    padding-right: 8px;
   }
 
   .track-name {
-    font-size: 0.8rem;
+    font-size: 0.9rem;
+    font-weight: 600;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    color: white;
   }
 
   .track-artist {
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    color: #b3b3b3;
   }
 
-  /* Hide Like/Add buttons on super small screens if needed, or keep them small */
+  /* Actions in Now Playing (Like/Add) */
   .like-btn,
   .add-to-playlist-btn {
-    padding: 0 4px !important;
+    display: none;
+    /* Hide on mobile mini-player to save space, or keep like only */
   }
 
-  .like-btn svg,
-  .add-to-playlist-btn svg {
-    width: 16px;
-    height: 16px;
+  /* Restore Like button if space permits */
+  .like-btn {
+    display: block !important;
   }
 
-  /* Center: Controls */
+  /* Center: Controls - Simplified */
   .player-controls {
     width: auto;
     flex: 0 0 auto;
-    gap: 4px;
+    display: flex;
+    flex-direction: column;
+    width: auto;
+    gap: 0;
+    /* Alignment only */
   }
-
-  /* Compact progress bar */
-  .progress-container {
-    display: none !important;
-    /* Hide progress bar on mobile for cleaner look, or move to absolute top */
-  }
-
-  /* Or if we want to keep it but smaller:
-  .progress-container { width: 100px; }
-  .time { display: none; } 
-  */
 
   .control-buttons {
-    gap: 12px;
+    gap: 16px;
+  }
+
+  /* Hide all controls except Play/Pause */
+  .control-buttons .control-btn {
+    display: none;
+  }
+
+  .control-buttons .play-btn {
+    display: flex;
+    background: transparent;
+    /* Transparent on dark bg? Or keep white circle */
+    /* Spotify uses white text on transparent or white circle. Let's keep existing white circle but remove scale hover just in case */
+    color: white;
+    /* Actually play-btn class sets bg white, color black. That looks good. */
+  }
+
+  /* Progress Bar - Bottom Overlay */
+  .progress-container {
+    display: flex !important;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: 2px;
+    gap: 0;
+    padding: 0;
+  }
+
+  .time {
+    display: none;
+  }
+
+  .seek-bar-wrapper {
+    height: 2px;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .seek-bar-bg {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 0;
+  }
+
+  .seek-bar-fill {
+    border-radius: 0;
+    background: white;
+    /* Or primary color */
+  }
+
+  /* Hide input/thumb on mobile miniplayer */
+  .seek-bar-input {
+    display: none;
   }
 
   .control-btn {
@@ -1564,4 +1623,83 @@
   .scroll-btn {
     display: none !important;
   }
+}
+
+/* Active Song & Playing Indicator */
+.song-row.active-song {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.song-row.active-song:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.playing-indicator {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 2px;
+  height: 14px;
+  width: 14px;
+}
+
+.playing-indicator .bar {
+  background-color: #1db954;
+  width: 3px;
+  animation: equalize 1s infinite;
+}
+
+.playing-indicator .bar:nth-child(1) {
+  animation-delay: 0s;
+  height: 60%;
+}
+
+.playing-indicator .bar:nth-child(2) {
+  animation-delay: 0.2s;
+  height: 100%;
+}
+
+.playing-indicator .bar:nth-child(3) {
+  animation-delay: 0.4s;
+  height: 80%;
+}
+
+@keyframes equalize {
+  0% {
+    height: 40%;
+  }
+
+  50% {
+    height: 100%;
+  }
+
+  100% {
+    height: 40%;
+  }
+}
+
+/* Green Play Button in Playlist Header */
+.green-play-btn {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background-color: #1db954;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  margin-top: 24px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+  transition: transform 0.1s, background-color 0.2s;
+}
+
+.green-play-btn:hover {
+  transform: scale(1.05);
+  background-color: #1ed760;
+}
+
+.green-play-btn:active {
+  transform: scale(0.95);
+  background-color: #169c46;
 }

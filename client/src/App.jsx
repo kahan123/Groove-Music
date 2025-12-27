@@ -6,6 +6,7 @@ import Sidebar from './components/Sidebar';
 import PlayerBar from './components/PlayerBar';
 import MainView from './components/MainView';
 import './App.css';
+import './FullScreenPlayer.css';
 
 function AppContent() {
   const [view, setView] = useState('home');
@@ -42,7 +43,51 @@ function AppContent() {
     }
   };
 
-  console.log(user);
+  // Global Keyboard Shortcuts & Media Session
+  const { isPlaying, togglePlay, nextSong, prevSong, currentSong } = useMusic();
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Ignore if typing in an input
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        togglePlay();
+      } else if (e.code === 'ArrowRight' && e.ctrlKey) {
+        nextSong();
+      } else if (e.code === 'ArrowLeft' && e.ctrlKey) {
+        prevSong();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [togglePlay, nextSong, prevSong]);
+
+  // Media Session API (Hardware Media Keys)
+  useEffect(() => {
+    if ('mediaSession' in navigator) {
+      navigator.mediaSession.setActionHandler('play', togglePlay);
+      navigator.mediaSession.setActionHandler('pause', togglePlay);
+      navigator.mediaSession.setActionHandler('previoustrack', prevSong);
+      navigator.mediaSession.setActionHandler('nexttrack', nextSong);
+    }
+  }, [togglePlay, nextSong, prevSong]);
+
+  useEffect(() => {
+    if (currentSong && 'mediaSession' in navigator) {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: currentSong.title,
+        artist: currentSong.artist,
+        artwork: [
+          { src: currentSong.cover, sizes: '512x512', type: 'image/jpeg' }
+        ]
+      });
+    }
+  }, [currentSong]);
+
+
 
   return (
     <div className="app-layout">

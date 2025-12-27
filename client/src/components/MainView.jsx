@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useMusic } from '../context/MusicContext';
-import { Play, Heart, Search, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Play, Pause, Heart, Search, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import PlaylistMenu from './PlaylistMenu';
 
 const ScrollableSection = ({ title, children }) => {
@@ -58,14 +58,14 @@ const ScrollableSection = ({ title, children }) => {
 };
 
 const MainView = ({ view, setView }) => {
-    const { playSong, likedSongs, playlists, user, addToPlaylist, updatePlaylist, createPlaylist, removeSongFromPlaylist } = useMusic();
+    const { playSong, likedSongs, playlists, user, addToPlaylist, updatePlaylist, createPlaylist, removeSongFromPlaylist, isPlaying, currentSong, togglePlay } = useMusic();
     const [searchTerm, setSearchTerm] = useState('');
     const [results, setResults] = useState([]);
     const [loading, setLoading] = useState(false);
 
     const API_URL = import.meta.env.VITE_API_URL;
-    console.log(API_URL)
-    
+
+
 
     // Debounced Search Effect
     useEffect(() => {
@@ -291,38 +291,53 @@ const MainView = ({ view, setView }) => {
         </div>
     );
 
-    // Helper for list view
-    const renderSongRow = (song, index, playlistId = null) => (
-        <div className="song-row" key={song.id} onClick={() => playSong(song)}>
-            <div className="index">
-                <span className="index-num">{index + 1}</span>
-                <span className="play-icon"><Play size={14} fill="white" /></span>
-            </div>
-            <img src={song.cover} alt="Cover" />
-            <div className="song-row-title-cell">
-                <div className="song-row-title">{song.title}</div>
-                <div className="song-row-artist">{song.artist}</div>
-            </div>
-            {/* Album Removed */}
-            <div className="song-row-actions">
-                {/* Delete from Playlist Button */}
-                {playlistId && (
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            removeSongFromPlaylist(playlistId, song.id);
-                        }}
-                        title="Remove from Playlist"
-                        style={{ marginRight: '8px' }}
-                    >
-                        <Trash2 size={16} />
-                    </button>
-                )}
+    const renderSongRow = (song, index, playlistId = null) => {
+        const isCurrent = currentSong && currentSong.id === song.id;
+        const isPlayingThis = isCurrent && isPlaying;
 
-
+        return (
+            <div
+                className={`song-row ${isCurrent ? 'active-song' : ''}`}
+                key={song.id}
+                onClick={() => playSong(song)}
+            >
+                <div className="index">
+                    {isPlayingThis ? (
+                        <div className="playing-indicator">
+                            <span className="bar"></span>
+                            <span className="bar"></span>
+                            <span className="bar"></span>
+                        </div>
+                    ) : (
+                        isCurrent ? <span className="index-num" style={{ color: '#1db954' }}>{index + 1}</span> :
+                            <span className="index-num">{index + 1}</span>
+                    )}
+                    {!isPlayingThis && <span className="play-icon"><Play size={14} fill="white" /></span>}
+                </div>
+                <img src={song.cover} alt="Cover" />
+                <div className="song-row-title-cell">
+                    <div className="song-row-title" style={{ color: isCurrent ? '#1db954' : 'white' }}>{song.title}</div>
+                    <div className="song-row-artist">{song.artist}</div>
+                </div>
+                {/* Album Removed */}
+                <div className="song-row-actions">
+                    {/* Delete from Playlist Button */}
+                    {playlistId && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                removeSongFromPlaylist(playlistId, song.id);
+                            }}
+                            title="Remove from Playlist"
+                            style={{ marginRight: '8px' }}
+                        >
+                            <Trash2 size={16} />
+                        </button>
+                    )}
+                </div>
             </div>
-        </div>
-    );
+        );
+    };
 
     // ... (rest of component) ...
 
@@ -343,7 +358,7 @@ const MainView = ({ view, setView }) => {
             return (
                 <div className="section">
                     <div className="playlist-header">
-                        <div className="playlist-cover-art">
+                        <div className="playlist-cover-art" style={{ background: 'linear-gradient(135deg, #450af5, #c4efd9)' }}>
                             <Heart size={64} color="white" fill="white" />
                         </div>
                         <div className="playlist-info">
@@ -353,6 +368,34 @@ const MainView = ({ view, setView }) => {
                                 {user && (user.avatar ? <img src={user.avatar} referrerPolicy="no-referrer" style={{ width: '24px', height: '24px', borderRadius: '50%' }} /> : <span>{user.displayName} • </span>)}
                                 <span>{likedSongs.length} songs</span>
                             </div>
+
+                            {/* Playlist Play Button */}
+                            {likedSongs.length > 0 && (
+                                <button
+                                    className="green-play-btn"
+                                    onClick={() => {
+                                        // Check if already playing from liked songs
+                                        // Approximation: check if current song is in liked songs (not perfect context check but close enough for UI)
+                                        // ideally we check originalContext type
+                                        /* 
+                                           We don't strictly have isPlayingContext here easily without adding more logic,
+                                           so we just check if Playing and Current Song is in Liked list.
+                                        */
+                                        const isPlayingLiked = isPlaying && likedSongs.some(s => s.id === currentSong?.id);
+
+                                        if (isPlayingLiked) {
+                                            togglePlay();
+                                        } else {
+                                            playSong(likedSongs[0], likedSongs);
+                                        }
+                                    }}
+                                >
+                                    {(isPlaying && likedSongs.some(s => s.id === currentSong?.id)) ?
+                                        <Pause size={28} fill="black" /> :
+                                        <Play size={28} fill="black" style={{ marginLeft: '4px' }} />
+                                    }
+                                </button>
+                            )}
                         </div>
                     </div>
                     <div className="section-content" style={{ padding: '24px' }}>
@@ -363,7 +406,22 @@ const MainView = ({ view, setView }) => {
                             <div></div> {/* Empty for Actions align */}
                         </div>
                         <div className="song-list">
-                            {likedSongs.map((song, idx) => renderSongRow(song, idx))}
+                            {likedSongs.map((song, idx) => (
+                                <div className="song-row" key={song.id} onClick={() => playSong(song, likedSongs)}>
+                                    <div className="index">
+                                        <span className="index-num">{idx + 1}</span>
+                                        <span className="play-icon"><Play size={14} fill="white" /></span>
+                                    </div>
+                                    <img src={song.cover} alt="Cover" />
+                                    <div className="song-row-title-cell">
+                                        <div className="song-row-title">{song.title}</div>
+                                        <div className="song-row-artist">{song.artist}</div>
+                                    </div>
+                                    <div className="song-row-actions">
+                                        {/* Actions for liked songs */}
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 </div>
@@ -427,6 +485,31 @@ const MainView = ({ view, setView }) => {
                         <div className="playlist-meta" style={{ color: '#b3b3b3' }}>
                             {user?.displayName} • {playlist.songs.length} songs
                         </div>
+
+                        {/* Playlist Play Button */}
+                        {playlist.songs && playlist.songs.length > 0 && (
+                            <button
+                                className="green-play-btn"
+                                onClick={() => {
+                                    // Check if currently playing this playlist
+                                    // Again, approximation or check strict context if avail
+                                    const isPlayingThis = isPlaying && playlist.songs.some(s => (s.videoId || s.id) === currentSong?.id);
+
+                                    if (isPlayingThis) {
+                                        togglePlay();
+                                    } else {
+                                        // Map for consistent format if needed, but context logic handles it
+                                        const mapped = playlist.songs.map(s => ({ id: s.videoId, title: s.title, artist: s.artist, cover: s.cover }));
+                                        playSong(mapped[0], mapped);
+                                    }
+                                }}
+                            >
+                                {(isPlaying && playlist.songs.some(s => (s.videoId || s.id) === currentSong?.id)) ?
+                                    <Pause size={28} fill="black" /> :
+                                    <Play size={28} fill="black" style={{ marginLeft: '4px' }} />
+                                }
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -443,10 +526,38 @@ const MainView = ({ view, setView }) => {
                                 <div></div>
                             </div>
                             <div className="song-list">
-                                {playlist.songs.map((song, idx) => {
-                                    const mapped = { id: song.videoId, title: song.title, artist: song.artist, cover: song.cover };
-                                    return renderSongRow(mapped, idx, playlist._id);
-                                })}
+                                <div className="song-list">
+                                    {playlist.songs.map((song, idx) => {
+                                        const mapped = { id: song.videoId, title: song.title, artist: song.artist, cover: song.cover };
+                                        const allMapped = playlist.songs.map(s => ({ id: s.videoId, title: s.title, artist: s.artist, cover: s.cover }));
+
+                                        return (
+                                            <div className="song-row" key={song.videoId || idx} onClick={() => playSong(mapped, allMapped)}>
+                                                <div className="index">
+                                                    <span className="index-num">{idx + 1}</span>
+                                                    <span className="play-icon"><Play size={14} fill="white" /></span>
+                                                </div>
+                                                <img src={song.cover} alt="Cover" />
+                                                <div className="song-row-title-cell">
+                                                    <div className="song-row-title">{song.title}</div>
+                                                    <div className="song-row-artist">{song.artist}</div>
+                                                </div>
+                                                <div className="song-row-actions">
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            removeSongFromPlaylist(playlist._id, song.videoId);
+                                                        }}
+                                                        title="Remove from Playlist"
+                                                        style={{ marginRight: '8px' }}
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
                             </div>
                         </div>
                     )}
