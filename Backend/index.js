@@ -279,7 +279,7 @@ app.get('/api/song', async (req, res) => {
             video.url,
             '-g',
             '-f', 'bestaudio',
-            '--extractor-args', 'youtube:player_client=tv_embedded',
+            '--extractor-args', 'youtube:player_client=android',
             ...(fs.existsSync(cookiePath) ? ['--cookies', cookiePath] : []),
             '--js-runtimes', 'node'
         ];
