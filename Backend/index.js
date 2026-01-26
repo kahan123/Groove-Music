@@ -29,7 +29,46 @@ app.use((req, res, next) => {
 });
 
 // DEBUG ENDPOINT
-app.get('/api/version', (req, res) => res.send({ version: "2.0.0", context: "youtubei-refactor" }));
+app.get('/api/version', (req, res) => res.send({ version: "2.1.0", context: "linux-debug" }));
+
+app.get('/api/debug', async (req, res) => {
+    try {
+        const fs = require('fs');
+        const path = require('path');
+        const { execSync } = require('child_process');
+
+        const platform = process.platform;
+        const tmpPath = '/tmp';
+        const binaryName = platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp_linux';
+        // On win32 check local dir, on linux check /tmp
+        const binaryPath = platform === 'win32'
+            ? path.join(__dirname, 'yt-dlp.exe')
+            : path.join('/tmp', binaryName);
+
+        const info = {
+            platform,
+            binaryPath,
+            exists: fs.existsSync(binaryPath),
+            size: fs.existsSync(binaryPath) ? fs.statSync(binaryPath).size : -1,
+            tmpListing: platform === 'linux' && fs.existsSync(tmpPath) ? fs.readdirSync(tmpPath) : 'N/A'
+        };
+
+        // Try version
+        try {
+            if (info.exists) {
+                // Determine command
+                const cmd = `${binaryPath} --version`;
+                info.versionOutput = execSync(cmd).toString().trim();
+            }
+        } catch (e) {
+            info.versionError = e.message;
+        }
+
+        res.json(info);
+    } catch (err) {
+        res.status(500).json({ error: err.message, stack: err.stack });
+    }
+});
 
 // Initialize YouTube Client
 YouTube.init().catch(err => console.error("Failed to init YouTube client:", err));
