@@ -91,14 +91,30 @@ class YoutubeClient {
         console.log("Spawning yt-dlp for:", url);
 
         try {
-            const stream = this.ytDlpWrap.execStream([
+            // execStream returns a Readable stream (stdout) in most wrappers, but for yt-dlp-wrap
+            // we rely on it giving us the stream.
+            // However, to capture stderr, we might need access to the child process.
+            // The library documentation says execStream returns a ChildProcess which is also a stream.
+
+            const cp = this.ytDlpWrap.execStream([
                 url,
                 '-f', 'bestaudio',
-                '-o', '-'
+                '-o', '-',
+                '--no-cache-dir', // Critical for read-only /tmp
+                '--no-check-certificate', // sometimes helps
+                '--prefer-free-formats',
+                '--no-playlist'
             ]);
 
+            // Log stderr for debugging Vercel issues
+            if (cp.stderr) {
+                cp.stderr.on('data', (data) => {
+                    console.error('[yt-dlp stderr]:', data.toString());
+                });
+            }
+
             return {
-                stream,
+                stream: cp, // cp is the readable stream
                 title: 'Stream',
                 contentLength: null
             };
