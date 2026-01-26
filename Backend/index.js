@@ -1,6 +1,7 @@
 const express = require('express');
-const YTDlpWrap = require('yt-dlp-wrap').default;
-const yts = require('yt-search');
+console.log("!!! SERVER RELOADED WITH NEW CODE !!!");
+const YouTube = require('./utils/YoutubeClient');
+const axios = require('axios');
 const fs = require('fs');
 require('dotenv').config();
 const path = require('path');
@@ -12,12 +13,7 @@ const cleanUrl = (url) => url ? url.replace(/\/$/, '') : '';
 const CLIENT_URL = cleanUrl(process.env.CLIENT_URL);
 const SERVER_URL = cleanUrl(process.env.SERVER_URL) || 'http://localhost:3000';
 
-app.use(cors({
-    origin: [CLIENT_URL, 'http://localhost:5173', 'http://localhost:3000'].filter(Boolean),
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
-}));
+app.use(cors());
 
 console.log("Environment Config:");
 console.log("CLIENT_URL:", CLIENT_URL);
@@ -33,73 +29,10 @@ app.use((req, res, next) => {
 });
 
 // DEBUG ENDPOINT
-app.get('/api/version', (req, res) => res.send({ version: "1.0.0", context: "api-refactor" }));
+app.get('/api/version', (req, res) => res.send({ version: "2.0.0", context: "youtubei-refactor" }));
 
-// Vercel/Linux requires the STANDALONE 
-// binary (yt-dlp_linux) because it doesn't have Python installed.
-// Only the file named 'yt-dlp' is a Python script script, which fails.
-const binaryName = process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp_linux';
-const ytDlpWrap = new YTDlpWrap();
-const binaryPath = process.platform === 'win32'
-    ? path.join(__dirname, binaryName)
-    : path.join('/tmp', binaryName);
-
-const cookiePath = process.platform === 'win32'
-    ? path.join(__dirname, 'cookies.txt')
-    : path.join('/tmp', 'cookies.txt');
-
-const ensureCookies = () => {
-    // console.log(process.env.YOUTUBE_COOKIES); // Don't log full cookies for security
-    if (process.env.YOUTUBE_COOKIES) {
-        // Write the cookies to a file
-        fs.writeFileSync(cookiePath, process.env.YOUTUBE_COOKIES);
-        console.log(`Cookies written to ${cookiePath}`);
-    } else {
-        console.log("No YOUTUBE_COOKIES env var found. YouTube might block requests.");
-    }
-};
-
-const ensureBinary = async () => {
-    // on Vercel/Linux, we might need to redownload if /tmp was cleared (ephemeral)
-    if (!fs.existsSync(binaryPath)) {
-        console.log(`Downloading yt-dlp binary (${binaryName}) to ${binaryPath}...`);
-        try {
-            // Manual download to ensure we get exactly the standalone binary
-            // bypassing any potential logic errors in the wrapper library
-            const downloadUrl = process.platform === 'win32'
-                ? 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe'
-                : 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux';
-
-            const response = await axios({
-                url: downloadUrl,
-                method: 'GET',
-                responseType: 'stream'
-            });
-
-            const writer = fs.createWriteStream(binaryPath);
-            response.data.pipe(writer);
-
-            await new Promise((resolve, reject) => {
-                writer.on('finish', resolve);
-                writer.on('error', reject);
-            });
-
-            console.log('Downloaded yt-dlp binary successfully');
-
-            // Ensure executable permissions on Linux/Unix
-            if (process.platform !== 'win32') {
-                fs.chmodSync(binaryPath, '755');
-            }
-        } catch (err) {
-            console.error("Failed to download binary:", err);
-            throw err;
-        }
-    }
-    ytDlpWrap.setBinaryPath(binaryPath);
-};
-
-const axios = require('axios');
-
+// Initialize YouTube Client
+YouTube.init().catch(err => console.error("Failed to init YouTube client:", err));
 
 const formatItunesResults = (results) => {
     return results.map(item => ({
@@ -252,100 +185,41 @@ app.get('/api/song', async (req, res) => {
     console.log(`Searching for: ${songName}`);
 
     try {
-        await ensureBinary();
-
-        const r = await yts(songName);
-        const videos = r.videos;
+        // 1. Search for value
+        const videos = await YouTube.search(songName);
 
         if (!videos || videos.length === 0) {
             return res.status(404).send("Song not found");
         }
 
+        // Find the best match (simulating yt-search behavior, taking first result)
+        // InnerTube search results might be mixed, we filtered by 'video' in client
         const video = videos[0];
-        console.log(`Found video: ${video.title} (${video.url})`);
+        console.log(`Found video: ${video.title} (${video.videoId})`);
 
-        console.log(`Streaming (yt-dlp): ${video.title}`);
+        // 2. Stream
+        console.log(`Streaming: ${video.title}`);
 
-        // Handle HTTP Range Requests (Critical for Vercel/Serverless)
-        // YouTube URLs allow range requests, so we can just redirect the client 
-        // to the direct URL if we remove the IP check, OR we proxy range-by-range.
+        const { stream, contentLength } = await YouTube.getStream(video.videoId);
 
-        // Strategy: Get the Direct URL using -g and proxy the specific chunk requested by the browser.
+        res.setHeader('Content-Type', 'audio/mpeg');
+        // Content-Length removal for chunked transfer safety
 
-        // Ensure cookies exist if provided
-        ensureCookies();
-
-        const args = [
-            video.url,
-            '-g',
-            '-f', 'bestaudio',
-
-            ...(fs.existsSync(cookiePath) ? ['--cookies', cookiePath] : []),
-            '--js-runtimes', 'node'
-        ];
-        
-
-        console.log(`Running yt-dlp with args: ${JSON.stringify(args)}`);
-
-        const directUrl = await ytDlpWrap.execPromise(args);
-
-        if (!directUrl) throw new Error("Failed to get direct URL");
-
-        const range = req.headers.range;
-        if (!range) {
-            // Requesting the whole file (usually initial probe)
-            // We can just pipe the start, but better to proxy simply
-            const axios = require('axios');
-            const response = await axios({
-                method: 'get',
-                url: directUrl.trim(),
-                responseType: 'stream',
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-                }
-            });
-            res.setHeader('Content-Type', 'audio/mpeg');
-            response.data.pipe(res);
-            return;
-        }
-
-        // Parse Range (e.g., "bytes=0-")
-        const parts = range.replace(/bytes=/, "").split("-");
-        const start = parseInt(parts[0], 10);
-        // Chunk size: 1MB per request to stay well within 10s timeout
-        const CHUNK_SIZE = 10 ** 6;
-        const end = parts[1] ? parseInt(parts[1], 10) : start + CHUNK_SIZE;
-
-        const axios = require('axios');
-        try {
-            const response = await axios({
-                method: 'get',
-                url: directUrl.trim(),
-                responseType: 'stream',
-                headers: {
-                    'Range': `bytes=${start}-${end}`,
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-                }
-            });
-
-            // Pass the Content-Range header back to the client
-            res.writeHead(206, {
-                'Content-Range': response.headers['content-range'],
-                'Accept-Ranges': 'bytes',
-                'Content-Length': response.headers['content-length'],
-                'Content-Type': 'audio/mpeg',
-            });
-
-            response.data.pipe(res);
-        } catch (streamErr) {
-            console.error("Stream Proxy Error:", streamErr.message);
-            res.status(500).end();
-        }
+        // Pipe the stream to response
+        stream.on('error', (err) => {
+            console.error('Stream Error:', err);
+            if (!res.headersSent) {
+                res.status(500).send("Stream failed");
+            } else {
+                res.end();
+            }
+        });
+        stream.pipe(res);
 
     } catch (err) {
-        console.error('Search Error:', err);
+        console.error('Song Error:', err);
         if (!res.headersSent) {
-            res.status(500).send(`Error processing request: ${err.message}\n${err.stack}`);
+            res.status(500).send(`Error processing request: ${err.message}`);
         }
     }
 });
