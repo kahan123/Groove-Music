@@ -256,6 +256,8 @@ app.get('/api/song', async (req, res) => {
         stream.pipe(res);
 
     } catch (err) {
+        const errorLog = `[${new Date().toISOString()}] Song Error for '${songName}': ${err.stack || err}\n`;
+        fs.appendFileSync(path.join(__dirname, 'error.log'), errorLog);
         console.error('Song Error:', err);
         if (!res.headersSent) {
             res.status(500).send(`Error processing request: ${err.message}`);
