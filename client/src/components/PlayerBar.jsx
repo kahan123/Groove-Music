@@ -5,10 +5,19 @@ import { Play, Pause, SkipBack, SkipForward, Volume2, Repeat, Shuffle, Loader, R
 import AddToPlaylistModal from './AddToPlaylistModal';
 import { useToast } from '../context/ToastContext';
 
+import HiddenYouTubePlayer from './HiddenYouTubePlayer';
+
 const PlayerBar = ({ setView }) => {
-    const { currentSong, isPlaying, setIsPlaying, isBuffering, setIsBuffering, togglePlay, nextSong, prevSong, startRadio, shuffle, toggleShuffle, repeat, toggleRepeat, likedSongs, toggleLike, playlists, user, addToPlaylist } = useMusic();
+    const { currentSong, isPlaying, setIsPlaying, isBuffering, setIsBuffering, togglePlay, nextSong, prevSong, startRadio, shuffle, toggleShuffle, repeat, toggleRepeat, likedSongs, toggleLike, playlists, user, addToPlaylist, provideAudioRef } = useMusic();
     const { error } = useToast();
     const audioRef = useRef(null);
+
+    // Sync ref to context
+    useEffect(() => {
+        if (audioRef.current && provideAudioRef) {
+            provideAudioRef(audioRef.current);
+        }
+    }, [audioRef.current]);
     const [progress, setProgress] = React.useState(0);
     const [duration, setDuration] = React.useState(0);
     const [volume, setVolume] = React.useState(1);
@@ -28,24 +37,29 @@ const PlayerBar = ({ setView }) => {
         setIsFullScreen(false);
     };
 
+    // Auto-play logic handled nicely by HiddenYouTubePlayer via props and ref
+    // We can keep the manual play/pause trigger here just in case, 
+    // but HiddenYouTubePlayer watches 'isPlaying' from context too.
+    // However, PlayerBar's useEffect on line 31 was syncing audioRef.
+    // HiddenYouTubePlayer already syncs with isPlaying.
+    // So we can simplify this useEffect, maybe removing it or keeping it for safety?
+    // Let's keep it minimal if we trust the component.
     useEffect(() => {
-        if (currentSong && audioRef.current) {
-            if (isPlaying) {
-                const playPromise = audioRef.current.play();
-                if (playPromise !== undefined) {
-                    playPromise.catch(error => console.error("Auto-play prevented", error));
-                }
-            } else {
-                audioRef.current.pause();
-            }
+        // Redundant if HiddenYouTubePlayer watches context, but harmless for ref syncing
+        if (currentSong && audioRef.current && isPlaying) {
+            // audioRef.current.play(); // Handled by component internally
         }
     }, [currentSong, isPlaying]);
 
-    const handleTimeUpdate = () => {
-        if (audioRef.current) {
-            setProgress(audioRef.current.currentTime);
-            setDuration(audioRef.current.duration || 0);
-        }
+    // Progress updates come from callback now, or we can use the ref?
+    // HiddenYouTubePlayer has onProgress prop. Use that!
+
+    const handleTimeUpdate = (currTime) => {
+        setProgress(currTime);
+    };
+
+    const handleDurationChange = (dur) => {
+        setDuration(dur);
     };
 
     const handleSeek = (e) => {
@@ -63,15 +77,7 @@ const PlayerBar = ({ setView }) => {
         return `${min}:${sec < 10 ? '0' + sec : sec}`;
     };
 
-    // Convert song title to stream URL if needed, or use ID. 
-    // Assuming Backend provides: /song?name=Title
-    const getStreamUrl = (song) => {
-        if (!song) return undefined;
-        // Construct a specific query for YouTube to find the right audio
-        const query = `${song.title} ${song.artist} audio`;
-        const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:3000' : '');
-        return `${API_URL}/api/song?name=${encodeURIComponent(query)}`;
-    };
+    // getStreamUrl removed - not needed
 
     return (
         <footer className={`player-bar ${isFullScreen ? 'full-screen-active' : ''}`} onClick={toggleFullScreen}>
@@ -118,7 +124,7 @@ const PlayerBar = ({ setView }) => {
                                 type="range"
                                 min="0"
                                 max={duration || 100}
-                                value={progress}
+                                value={progress || 0}
                                 onChange={handleSeek}
                                 className="fs-seek-bar-input"
                             />
@@ -223,7 +229,7 @@ const PlayerBar = ({ setView }) => {
                         <Radio size={18} className={currentSong ? "" : "opacity-50"} />
                     </button>
                     <button
-                        className={`control-btn ${repeat !== 'off' ? 'active-control' : ''}`}
+                        className={`fs-control-btn ${repeat !== 'off' ? 'active-control' : ''}`}
                         onClick={toggleRepeat}
                         title={`Repeat ${repeat === 'one' ? 'One' : repeat === 'all' ? 'All' : 'Off'}`}
                     >
@@ -246,7 +252,7 @@ const PlayerBar = ({ setView }) => {
                             type="range"
                             min="0"
                             max={duration || 100}
-                            value={progress}
+                            value={progress || 0}
                             onChange={handleSeek}
                             className="seek-bar-input"
                         />
@@ -287,21 +293,21 @@ const PlayerBar = ({ setView }) => {
                         onChange={(e) => {
                             const val = Number(e.target.value);
                             setVolume(val);
-                            if (audioRef.current) audioRef.current.volume = val;
+                            // Valid if audioRef is updated by HiddenYouTubePlayer
                         }}
                         className="seek-bar-input"
                     />
                 </div>
             </div>
 
-            <audio
+            <HiddenYouTubePlayer
                 ref={audioRef}
-                src={getStreamUrl(currentSong)}
-                onTimeUpdate={handleTimeUpdate}
+                volume={volume}
+                onProgress={handleTimeUpdate}
+                onDuration={handleDurationChange}
                 onEnded={nextSong}
-                onLoadedMetadata={(e) => setDuration(e.target.duration)}
-                onWaiting={() => setIsBuffering && setIsBuffering(true)}
-                onPlaying={() => setIsBuffering && setIsBuffering(false)}
+                onBuffering={(isBuf) => setIsBuffering && setIsBuffering(isBuf)}
+                onReady={() => { }}
             />
 
             <AddToPlaylistModal
@@ -314,3 +320,5 @@ const PlayerBar = ({ setView }) => {
 };
 
 export default PlayerBar;
+
+

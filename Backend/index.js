@@ -11,9 +11,12 @@ const app = express();
 const cleanUrl = (url) => url ? url.replace(/\/$/, '') : '';
 
 const CLIENT_URL = cleanUrl(process.env.CLIENT_URL);
-const SERVER_URL = cleanUrl(process.env.SERVER_URL) || 'http://localhost:3000';
+const SERVER_URL = cleanUrl(process.env.SERVER_URL);
 
-app.use(cors());
+app.use(cors({
+    origin: CLIENT_URL,
+    credentials: true
+}));
 
 console.log("Environment Config:");
 console.log("CLIENT_URL:", CLIENT_URL);
@@ -228,39 +231,31 @@ app.get('/api/song', async (req, res) => {
         const videos = await YouTube.search(songName);
 
         if (!videos || videos.length === 0) {
-            return res.status(404).send("Song not found");
+            return res.status(404).json({ error: "Song not found" });
         }
 
-        // Find the best match (simulating yt-search behavior, taking first result)
-        // InnerTube search results might be mixed, we filtered by 'video' in client
         const video = videos[0];
         console.log(`Found video: ${video.title} (${video.videoId})`);
 
-        // 2. Stream
-        console.log(`Streaming: ${video.title}`);
-
-        const { stream, contentLength } = await YouTube.getStream(video.videoId);
-
-        res.setHeader('Content-Type', 'audio/mpeg');
-        // Content-Length removal for chunked transfer safety
-
-        // Pipe the stream to response
-        stream.on('error', (err) => {
-            console.error('Stream Error:', err);
-            if (!res.headersSent) {
-                res.status(500).send("Stream failed");
-            } else {
-                res.end();
-            }
+        // Return metadata for client-side playback
+        res.json({
+            videoId: video.videoId,
+            title: video.title,
+            thumbnail: video.thumbnail,
+            author: video.author,
+            duration: video.duration
         });
-        stream.pipe(res);
 
     } catch (err) {
         const errorLog = `[${new Date().toISOString()}] Song Error for '${songName}': ${err.stack || err}\n`;
-        fs.appendFileSync(path.join(__dirname, 'error.log'), errorLog);
+        // Check if error.log is writable/exists to avoid crashing on logging
+        try {
+            fs.appendFileSync(path.join(__dirname, 'error.log'), errorLog);
+        } catch (e) { console.error("Could not write to error log"); }
+
         console.error('Song Error:', err);
         if (!res.headersSent) {
-            res.status(500).send(`Error processing request: ${err.message}`);
+            res.status(500).json({ error: `Error processing request: ${err.message}` });
         }
     }
 });
@@ -528,6 +523,10 @@ app.delete('/api/playlists/:id', async (req, res) => {
 });
 
 
+
+
+// Frontend serving logic removed to separate concerns.
+// The backend now strictly serves API requests.
 
 if (require.main === module) {
     app.listen(PORT, () => {

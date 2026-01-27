@@ -12,7 +12,11 @@ export const MusicProvider = ({ children }) => {
     const [isBuffering, setIsBuffering] = useState(false);
     const [queue, setQueue] = useState([]);
     const [playlists, setPlaylists] = useState([]);
-    const audioRef = useRef(new Audio());
+    const audioRef = useRef(null); // Will be provided by Player component
+
+    const provideAudioRef = (ref) => {
+        audioRef.current = ref;
+    };
 
     const [shuffle, setShuffle] = useState(false);
     const [user, setUser] = useState(null);
@@ -50,7 +54,7 @@ export const MusicProvider = ({ children }) => {
             try {
                 data = JSON.parse(text);
             } catch (e) {
-                console.error("Failed to parse user data:", e);
+                // Failed to parse user data
                 return; // If parsing fails, stop here
             }
 
@@ -74,7 +78,7 @@ export const MusicProvider = ({ children }) => {
             }
         } catch (err) {
             // Only log actual network/server errors, not auth failures
-            console.error("Failed to fetch user session:", err);
+            // Failed to fetch user session
         }
     };
 
@@ -90,7 +94,7 @@ export const MusicProvider = ({ children }) => {
             setPlaylists([]);
             window.location.href = '/';
         } catch (err) {
-            console.error("Logout failed", err);
+            // Logout failed
         }
     };
 
@@ -128,7 +132,7 @@ export const MusicProvider = ({ children }) => {
                 cover: s.cover
             })));
         } catch (err) {
-            console.error("Like failed", err);
+            // Like failed
             // Revert? For now assume success or user refresh handles it
         }
     };
@@ -149,7 +153,7 @@ export const MusicProvider = ({ children }) => {
             // Return the new playlist ID (last one)
             return updatedUser.playlists[updatedUser.playlists.length - 1]._id;
         } catch (err) {
-            console.error("Create playlist failed", err);
+            // Create playlist failed
             error("Failed to create playlist");
             return null;
         }
@@ -169,7 +173,7 @@ export const MusicProvider = ({ children }) => {
             setPlaylists(updatedUser.playlists);
             success("Playlist updated");
         } catch (err) {
-            console.error("Update playlist failed", err);
+            // Update playlist failed
             error("Failed to update playlist");
         }
     };
@@ -193,7 +197,7 @@ export const MusicProvider = ({ children }) => {
             setPlaylists(updatedUser.playlists);
             success(`Added to playlist!`);
         } catch (err) {
-            console.error("Add to playlist failed", err);
+            // Add to playlist failed
             error(err.message || "Failed to add to playlist");
         }
     };
@@ -211,7 +215,7 @@ export const MusicProvider = ({ children }) => {
             setPlaylists(updatedUser.playlists);
             success("Song removed from playlist");
         } catch (err) {
-            console.error("Remove song failed", err);
+            // Remove song failed
             error("Failed to remove song");
         }
     };
@@ -226,7 +230,7 @@ export const MusicProvider = ({ children }) => {
             });
             if (!res.ok) {
                 const text = await res.text();
-                console.error(`Delete failed: ${res.status} ${text}`);
+                // Delete failed
                 throw new Error(text || 'Delete failed');
             }
             const updatedUser = await res.json();
@@ -234,7 +238,7 @@ export const MusicProvider = ({ children }) => {
             setPlaylists(updatedUser.playlists);
             success("Playlist deleted");
         } catch (err) {
-            console.error("Delete playlist failed", err);
+            // Delete playlist failed
             error(`Failed to delete: ${err.message}`);
         }
     };
@@ -314,13 +318,15 @@ export const MusicProvider = ({ children }) => {
                 setIsPlaying(true);
             }
         } catch (err) {
-            console.error("Autoplay failed", err);
+            // Autoplay failed
         }
     };
 
     const nextSong = () => {
         if (repeat === 'one') {
             if (audioRef.current) {
+                // HMR Ghost Check
+                if (audioRef.current instanceof HTMLElement) return;
                 audioRef.current.currentTime = 0;
                 audioRef.current.play();
             }
@@ -363,6 +369,8 @@ export const MusicProvider = ({ children }) => {
                     // Loop Single Song (Same as Repeat One effectively for single context)
                     if (currentSong) {
                         if (audioRef.current) {
+                            // HMR Ghost Check: If stale Audio element matches, ignore it
+                            if (audioRef.current instanceof HTMLElement) return;
                             audioRef.current.currentTime = 0;
                             audioRef.current.play();
                         }
@@ -385,7 +393,11 @@ export const MusicProvider = ({ children }) => {
     };
 
     const prevSong = () => {
-        if (audioRef.current && audioRef.current.currentTime > 3) {
+        // Use optional chaining carefully
+        // HMR Ghost Check: If stale Audio element matches, ignore it
+        if (audioRef.current && audioRef.current instanceof HTMLElement) return;
+
+        if (audioRef.current && typeof audioRef.current.currentTime === 'number' && audioRef.current.currentTime > 3) {
             audioRef.current.currentTime = 0;
             return;
         }
@@ -413,7 +425,7 @@ export const MusicProvider = ({ children }) => {
             setQueue(data);
 
         } catch (err) {
-            console.error("Radio start failed", err);
+            // Radio start failed
         }
     };
 
@@ -443,7 +455,8 @@ export const MusicProvider = ({ children }) => {
             updatePlaylist,
             deletePlaylist,
             removeSongFromPlaylist,
-            logout
+            logout,
+            provideAudioRef
         }}>
             {children}
         </MusicContext.Provider>

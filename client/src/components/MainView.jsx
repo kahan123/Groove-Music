@@ -92,7 +92,7 @@ const MainView = ({ view, setView }) => {
             const data = await res.json();
             setResults(data);
         } catch (err) {
-            console.error(err);
+            // Error fetching search results
         } finally {
             setLoading(false);
         }
@@ -116,7 +116,6 @@ const MainView = ({ view, setView }) => {
     // Home Data State
     const [shelves, setShelves] = useState([]);
     const [homeLoading, setHomeLoading] = useState(true);
-    console.log(`${API_URL}/api/home`)
 
     useEffect(() => {
         if (view === 'home' && shelves.length === 0) {
@@ -126,7 +125,7 @@ const MainView = ({ view, setView }) => {
                     setShelves(data);
                     setHomeLoading(false);
                 })
-                .catch(err => console.error("Home fetch error", err));
+                .catch(err => { });
         }
     }, [view]);
 
@@ -381,7 +380,6 @@ const MainView = ({ view, setView }) => {
             },
             {
                 label: 'Go to Artist', action: () => {
-                    console.log("Go to artist:", contextMenu.song.artist);
                     // Future: setView(`artist:${contextMenu.song.artist}`)
                     alert("Artist pages coming soon!");
                 }
@@ -403,7 +401,7 @@ const MainView = ({ view, setView }) => {
                     // Or direct API call. simpler to just reuse toggle logic or removeSongFromPlaylist if it supports 'liked' (it usually doesn't, 'liked' is special).
                     // Actually logic in MainView for Heart click handles this.
                     // Let's leave it for now or implement properly later.
-                    console.log("Remove from liked");
+                    // Let's leave it for now or implement properly later.
                 }
             });
         }

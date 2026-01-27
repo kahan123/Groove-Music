@@ -21,7 +21,6 @@ function AppContent() {
   // - In Development: default to localhost:3000
   // - In Production (Built): default to '' (relative path, same origin)
   const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:3000' : '');
-  console.log("Current API URL:", API_URL || "(relative)");
 
   const navigate = (newView) => {
     if (newView === view) return;
@@ -155,7 +154,6 @@ function AppContent() {
                       referrerPolicy="no-referrer"
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                       onError={(e) => {
-                        console.error("Avatar load failed:", user.avatar);
                         e.target.style.display = 'none';
                         if (e.target.parentElement) {
                           e.target.parentElement.style.backgroundColor = '#555';
