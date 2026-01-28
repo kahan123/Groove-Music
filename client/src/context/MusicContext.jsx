@@ -34,6 +34,7 @@ export const MusicProvider = ({ children }) => {
     const fetchUser = async () => {
         try {
             // Ensure credentials are sent to get the cookie
+            console.log(`[DEBUG] Fetching user from: ${API_URL}/api/current_user`);
             const res = await fetch(`${API_URL}/api/current_user`, {
                 credentials: 'include'
             });
