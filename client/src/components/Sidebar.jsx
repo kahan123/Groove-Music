@@ -10,6 +10,13 @@ const Sidebar = ({ setView, currentView, mobileOpen, closeMobile }) => {
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [playlistToDelete, setPlaylistToDelete] = useState(null);
 
+    const handleNavigation = (view) => {
+        setView(view);
+        if (mobileOpen && closeMobile) {
+            closeMobile();
+        }
+    };
+
     return (
         <aside className={`sidebar ${mobileOpen ? 'mobile-open' : ''}`}>
             {mobileOpen && (
@@ -26,13 +33,13 @@ const Sidebar = ({ setView, currentView, mobileOpen, closeMobile }) => {
             </div>
 
             <nav className="nav-menu">
-                <a onClick={() => setView('home')} className={`nav-item ${currentView === 'home' ? 'active' : ''}`}>
+                <a onClick={() => handleNavigation('home')} className={`nav-item ${currentView === 'home' ? 'active' : ''}`}>
                     <Home size={20} /> Home
                 </a>
-                <a onClick={() => setView('search')} className={`nav-item ${currentView === 'search' ? 'active' : ''}`}>
+                <a onClick={() => handleNavigation('search')} className={`nav-item ${currentView === 'search' ? 'active' : ''}`}>
                     <Search size={20} /> Search
                 </a>
-                <a onClick={() => setView('explore')} className={`nav-item ${currentView === 'explore' ? 'active' : ''}`}>
+                <a onClick={() => handleNavigation('explore')} className={`nav-item ${currentView === 'explore' ? 'active' : ''}`}>
                     <Rocket size={20} /> Explore
                 </a>
             </nav>
@@ -41,13 +48,13 @@ const Sidebar = ({ setView, currentView, mobileOpen, closeMobile }) => {
                 <h3>YOUR PLAYLISTS</h3>
 
                 {/* Liked Songs Special Playlist */}
-                <div className="playlist-item" onClick={() => setView('liked')}>
+                <div className="playlist-item" onClick={() => handleNavigation('liked')}>
                     <Heart size={18} fill="#1db954" color="#1db954" />
                     <span>Liked Songs</span>
                 </div>
 
                 {playlists.map(pl => (
-                    <div key={pl._id} className="playlist-item group" onClick={() => setView(`playlist:${pl._id}`)}>
+                    <div key={pl._id} className="playlist-item group" onClick={() => handleNavigation(`playlist:${pl._id}`)}>
                         <ListMusic size={18} />
                         <span className="truncate flex-1">{pl.name}</span>
                         <button
@@ -72,7 +79,7 @@ const Sidebar = ({ setView, currentView, mobileOpen, closeMobile }) => {
                         }
                         const newId = await createPlaylist("New Playlist");
                         if (newId) {
-                            setView(`playlist:${newId}`);
+                            handleNavigation(`playlist:${newId}`);
                         }
                     }}
                 >

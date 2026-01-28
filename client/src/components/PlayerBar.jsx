@@ -204,7 +204,7 @@ const PlayerBar = ({ setView }) => {
             </div>
 
             <div className="player-controls">
-                <div className="control-buttons">
+                <div className="control-buttons" onClick={(e) => e.stopPropagation()}>
                     <button
                         className={`control-btn ${shuffle ? 'active-control' : ''}`}
                         onClick={toggleShuffle}
@@ -261,7 +261,7 @@ const PlayerBar = ({ setView }) => {
                 </div>
             </div>
 
-            <div className="volume-controls">
+            <div className="volume-controls" onClick={(e) => e.stopPropagation()}>
                 <button
                     className="control-btn"
                     title="Queue"
