@@ -1,3 +1,4 @@
+import { GoogleLogin } from '@react-oauth/google';
 import { useState, useEffect } from 'react';
 import { User, ChevronLeft, ChevronRight, LogOut, Menu, X } from 'lucide-react';
 import { MusicProvider, useMusic } from './context/MusicContext';
@@ -10,7 +11,7 @@ import './FullScreenPlayer.css';
 
 function AppContent() {
   const [view, setView] = useState('home');
-  const { user } = useMusic();
+  const { user, login, logout } = useMusic();
   const [history, setHistory] = useState(['home']);
   const [historyIndex, setHistoryIndex] = useState(0);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -186,7 +187,7 @@ function AppContent() {
                       zIndex: 999
                     }}>
                       <button
-                        onClick={() => window.location.href = `${API_URL}/api/logout`}
+                        onClick={logout}
                         style={{
                           display: 'flex',
                           alignItems: 'center',
@@ -211,12 +212,14 @@ function AppContent() {
                 )}
               </>
             ) : (
-              <div
-                className="user-profile"
-                title="Login with Google"
-                onClick={() => window.location.href = `${API_URL}/auth/google`}
-              >
-                <User size={24} color="#b3b3b3" />
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                <GoogleLogin
+                  onSuccess={login}
+                  onError={() => console.log('Login Failed')}
+                  theme="filled_black"
+                  shape="circle"
+                  type="icon"
+                />
               </div>
             )}
           </div>

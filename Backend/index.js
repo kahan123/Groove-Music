@@ -269,135 +269,68 @@ mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/groove')
     .then(() => console.log('✅ MongoDB Connected'))
     .catch(err => console.error('❌ MongoDB Connection Error:', err));
 
-const passport = require('passport');
-const GoogleStrategy = require('passport-google-oauth20').Strategy;
-const cookieSession = require('cookie-session');
+const jwt = require('jsonwebtoken');
+const { OAuth2Client } = require('google-auth-library');
 const User = require('./models/User');
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-// Trust proxy for Vercel/Fly/Render (set to true to trust all proxies in front)
-app.set('trust proxy', true);
-
-// Cooke Session
-const isProduction = process.env.NODE_ENV === 'production' || (CLIENT_URL && !CLIENT_URL.includes('localhost'));
-console.log(`[DEBUG] Cookie Config - isProduction: ${isProduction}, SameSite: ${isProduction ? 'none' : 'lax'}, Secure: ${isProduction}`);
-
-app.use(cookieSession({
-    maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-    keys: [process.env.COOKIE_KEY],
-    sameSite: (isProduction || !CLIENT_URL.includes('localhost')) ? 'none' : 'lax',
-    secure: (isProduction || !CLIENT_URL.includes('localhost')), // Must be true for sameSite: 'none'
-    httpOnly: true,
-    proxy: true // trusting the reverse proxy when setting secure cookies (important for Vercel)
-}));
-
-// Shim for passport 0.6+ compatibility with cookie-session
-app.use(function (req, res, next) {
-    if (req.session && !req.session.regenerate) {
-        req.session.regenerate = (cb) => {
-            cb();
-        };
-    }
-    if (req.session && !req.session.save) {
-        req.session.save = (cb) => {
-            cb();
-        };
+// Authentication Middleware (JWT)
+app.use(async (req, res, next) => {
+    const authHeader = req.headers.authorization;
+    if (authHeader) {
+        const token = authHeader.split(' ')[1];
+        if (token) {
+            try {
+                const decoded = jwt.verify(token, process.env.COOKIE_KEY);
+                const user = await User.findById(decoded.id);
+                if (user) req.user = user;
+            } catch (e) {
+                console.error("JWT Error:", e.message);
+            }
+        }
     }
     next();
 });
 
-// DEBUG: Check Session before Passport
-app.use((req, res, next) => {
-    console.log(`[DEBUG] Session State (Pre-Passport):`, req.session);
-    console.log(`[DEBUG] Cookies Present:`, Object.keys(req.headers.cookie ? require('cookie').parse(req.headers.cookie) : {}));
-    next();
-});
+// Google Auth Route (JWT Exchange)
+app.post('/api/auth/google', async (req, res) => {
+    const { token } = req.body;
+    try {
+        const ticket = await googleClient.verifyIdToken({
+            idToken: token,
+            audience: process.env.GOOGLE_CLIENT_ID
+        });
+        const payload = ticket.getPayload();
+        const googleId = payload.sub;
 
-app.use(passport.initialize());
-app.use(passport.session());
-
-passport.serializeUser((user, done) => {
-    console.log(`[DEBUG] serializeUser: Serializing user ${user.id}`);
-    done(null, user.id);
-});
-
-passport.deserializeUser((id, done) => {
-    console.log(`[DEBUG] deserializeUser: Attempting to find user ${id}`);
-    User.findById(id).then(user => {
-        if (user) {
-            console.log(`[DEBUG] deserializeUser: User found: ${user.id}`);
-            done(null, user);
-        } else {
-            console.log(`[DEBUG] deserializeUser: User NOT found for ID ${id}`);
-            done(null, null);
+        let user = await User.findOne({ googleId });
+        if (!user) {
+            user = await new User({
+                googleId,
+                email: payload.email,
+                displayName: payload.name,
+                avatar: payload.picture
+            }).save();
+        } else if (user.avatar !== payload.picture) {
+            user.avatar = payload.picture;
+            await user.save();
         }
-    }).catch(err => {
-        console.error(`[DEBUG] deserializeUser: Error`, err);
-        done(err, null);
-    });
+
+        const sessionToken = jwt.sign({ id: user._id }, process.env.COOKIE_KEY, { expiresIn: '30d' });
+        res.json({ token: sessionToken, user });
+    } catch (e) {
+        console.error("Auth Fail:", e);
+        res.status(401).json({ error: "Authentication failed" });
+    }
 });
-
-passport.use(new GoogleStrategy({
-    clientID: process.env.GOOGLE_CLIENT_ID,
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: `${SERVER_URL}/auth/google/callback`
-}, async (accessToken, refreshToken, profile, done) => {
-    // Check if user exists
-    const existingUser = await User.findOne({ googleId: profile.id });
-    const avatarUrl = (profile.photos && profile.photos.length > 0) ? profile.photos[0].value : null;
-
-    console.log("Google Auth Profile:", profile.displayName);
-    console.log("Avatar URL found:", avatarUrl);
-
-    if (existingUser) {
-        // Update avatar if it changed or was missing
-        if (existingUser.avatar !== avatarUrl) {
-            existingUser.avatar = avatarUrl;
-            await existingUser.save();
-        }
-        return done(null, existingUser);
-    }
-    // Create new user
-    const user = await new User({
-        googleId: profile.id,
-        email: profile.emails[0].value,
-        displayName: profile.displayName,
-        avatar: avatarUrl
-    }).save();
-    done(null, user);
-}));
-
-// Auth Routes
-app.get('/auth/google', passport.authenticate('google', {
-    scope: ['profile', 'email']
-}));
-
-app.get('/auth/google/callback',
-    (req, res, next) => {
-        console.log("Auth Callback Hit");
-        next();
-    },
-    passport.authenticate('google', { failureRedirect: '/' }),
-    (req, res) => {
-        console.log("Auth Success, redirecting to:", CLIENT_URL);
-        console.log("User:", req.user ? req.user.id : "No User");
-        res.redirect(CLIENT_URL); // Redirect to frontend
-    }
-);
 
 app.get('/api/current_user', (req, res) => {
-    console.log("[DEBUG] /api/current_user hit");
-    console.log("[DEBUG] Protocol:", req.protocol);
-    console.log("[DEBUG] Secure:", req.secure);
-    console.log("[DEBUG] X-Forwarded-Proto:", req.get('X-Forwarded-Proto'));
-    console.log("[DEBUG] Cookies:", req.headers.cookie);
-    res.send(req.user);
+    res.send(req.user || null);
 });
 
-app.get('/api/logout', (req, res, next) => {
-    req.logout((err) => {
-        if (err) { return next(err); }
-        res.redirect(CLIENT_URL);
-    });
+app.post('/api/logout', (req, res) => {
+    // Client discards token
+    res.send({ status: 'OK' });
 });
 
 app.post('/api/likes', async (req, res) => {

@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useRef, useEffect } from 'react';
 import { useToast } from './ToastContext';
+import { jwtDecode } from 'jwt-decode';
 
 const MusicContext = createContext();
 
@@ -29,73 +30,117 @@ export const MusicProvider = ({ children }) => {
     // Otherwise:
     // - In Development: default to localhost:3000
     // - In Production (Built): default to '' (relative path, same origin)
+    const [token, setToken] = useState(localStorage.getItem('token'));
+
+    // Use VITE_API_URL if set. 
+    // Otherwise:
+    // - In Development: default to localhost:3000
+    // - In Production (Built): default to '' (relative path, same origin)
     const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:3000' : '');
 
-    const fetchUser = async () => {
+    const authFetch = async (endpoint, options = {}) => {
+        const headers = {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+            ...options.headers
+        };
+
+        const res = await fetch(`${API_URL}${endpoint}`, {
+            ...options,
+            headers
+        });
+
+        if (res.status === 401) {
+            logout(); // Auto logout on invalid token
+            // error("Session expired. Please login again.");
+        }
+        return res;
+    };
+
+
+    const login = async (credentialResponse) => {
         try {
-            // Ensure credentials are sent to get the cookie
-            console.log(`[DEBUG] Fetching user from: ${API_URL}/api/current_user`);
-            const res = await fetch(`${API_URL}/api/current_user`, {
-                credentials: 'include'
+            const googleToken = credentialResponse.credential;
+            // Send to backend to verify and get user data
+            const res = await fetch(`${API_URL}/api/auth/google`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: googleToken })
             });
 
-            if (res.status === 401 || res.status === 403) {
-                // Not logged in, this is expected behavior for guests
-                return;
-            }
+            if (!res.ok) throw new Error("Login failed");
 
-            // Check for empty response before parsing JSON
-            const text = await res.text();
-            if (!text) {
-                // Empty response, treat as not logged in or no user data
-                return;
-            }
+            const data = await res.json();
 
-            let data;
-            try {
-                data = JSON.parse(text);
-            } catch (e) {
-                // Failed to parse user data
-                return; // If parsing fails, stop here
-            }
+            // Save Token
+            localStorage.setItem('token', data.token);
+            setToken(data.token);
+            setUser(data.user);
 
-            if (!res.ok) {
-                throw new Error(`Auth check failed: ${res.status}`);
+            // Sync initial state
+            if (data.user.likedSongs) {
+                setLikedSongs(data.user.likedSongs.map(s => ({
+                    id: s.videoId,
+                    title: s.title,
+                    artist: s.artist,
+                    cover: s.cover
+                })));
             }
-            if (data && data.googleId) {
-                setUser(data);
-                // Sync initial state
-                if (data.likedSongs) {
-                    setLikedSongs(data.likedSongs.map(s => ({
-                        id: s.videoId,
-                        title: s.title,
-                        artist: s.artist,
-                        cover: s.cover
-                    })));
-                }
-                if (data.playlists) {
-                    setPlaylists(data.playlists);
-                }
+            if (data.user.playlists) {
+                setPlaylists(data.user.playlists);
             }
+            success(`Welcome ${data.user.displayName}!`);
+
         } catch (err) {
-            console.error("[DEBUG] fetchUser Failed:", err);
+            console.error("Login error", err);
+            error("Login failed");
         }
     };
+
+    useEffect(() => {
+        // Check local storage for existing token on load
+        const storedToken = localStorage.getItem('token');
+        if (storedToken) {
+            setToken(storedToken);
+            try {
+                // Decode purely for UI immediately (optional), or verify with backend
+                // For now, let's just fetch the user profile using the token to ensure it's valid
+                authFetch('/api/current_user')
+                    .then(res => {
+                        if (res.ok) return res.json();
+                        throw new Error("Invalid token");
+                    })
+                    .then(data => {
+                        setUser(data);
+                        if (data.likedSongs) {
+                            setLikedSongs(data.likedSongs.map(s => ({
+                                id: s.videoId,
+                                title: s.title,
+                                artist: s.artist,
+                                cover: s.cover
+                            })));
+                        }
+                        if (data.playlists) {
+                            setPlaylists(data.playlists);
+                        }
+                    })
+                    .catch(() => {
+                        logout();
+                    });
+            } catch (e) { logout(); }
+        }
+    }, []);
 
     useEffect(() => {
         fetchUser();
     }, []);
 
-    const logout = async () => {
-        try {
-            await fetch(`${API_URL}/api/logout`, { method: 'POST' });
-            setUser(null);
-            setLikedSongs([]);
-            setPlaylists([]);
-            window.location.href = '/';
-        } catch (err) {
-            // Logout failed
-        }
+    const logout = () => {
+        localStorage.removeItem('token');
+        setToken(null);
+        setUser(null);
+        setLikedSongs([]);
+        setPlaylists([]);
     };
 
     // Helper for auth headers
@@ -116,10 +161,8 @@ export const MusicProvider = ({ children }) => {
         }
 
         try {
-            const res = await fetch(`${API_URL}/api/likes`, {
+            const res = await authFetch('/api/likes', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
                 body: JSON.stringify({ song })
             });
             const updatedUser = await res.json();
@@ -140,10 +183,8 @@ export const MusicProvider = ({ children }) => {
     const createPlaylist = async (name) => {
         if (!user) return null;
         try {
-            const res = await fetch(`${API_URL}/api/playlists`, {
+            const res = await authFetch('/api/playlists', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
                 body: JSON.stringify({ name })
             });
             const updatedUser = await res.json();
@@ -162,10 +203,8 @@ export const MusicProvider = ({ children }) => {
     const updatePlaylist = async (id, name) => {
         if (!user) return;
         try {
-            const res = await fetch(`${API_URL}/api/playlists/${id}`, {
+            const res = await authFetch(`/api/playlists/${id}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
                 body: JSON.stringify({ name })
             });
             const updatedUser = await res.json();
@@ -181,10 +220,8 @@ export const MusicProvider = ({ children }) => {
     const addToPlaylist = async (playlistId, song) => {
         if (!user) return;
         try {
-            const res = await fetch(`${API_URL}/api/playlists/add`, {
+            const res = await authFetch('/api/playlists/add', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
                 body: JSON.stringify({ playlistId, song })
             });
             if (!res.ok) {
@@ -205,9 +242,8 @@ export const MusicProvider = ({ children }) => {
     const removeSongFromPlaylist = async (playlistId, songId) => {
         if (!user) return;
         try {
-            const res = await fetch(`${API_URL}/api/playlists/${playlistId}/songs/${songId}`, {
-                method: 'DELETE',
-                credentials: 'include'
+            const res = await authFetch(`/api/playlists/${playlistId}/songs/${songId}`, {
+                method: 'DELETE'
             });
             if (!res.ok) throw new Error("Failed to remove song");
             const updatedUser = await res.json();
@@ -224,9 +260,8 @@ export const MusicProvider = ({ children }) => {
         if (!user) return;
         try {
 
-            const res = await fetch(`${API_URL}/api/playlists/${id}`, {
-                method: 'DELETE',
-                credentials: 'include'
+            const res = await authFetch(`/api/playlists/${id}`, {
+                method: 'DELETE'
             });
             if (!res.ok) {
                 const text = await res.text();
@@ -456,6 +491,7 @@ export const MusicProvider = ({ children }) => {
             deletePlaylist,
             removeSongFromPlaylist,
             logout,
+            login,
             provideAudioRef
         }}>
             {children}
