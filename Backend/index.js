@@ -28,6 +28,7 @@ app.use(express.json());
 // DEBUG LOGGER - VERIFY REQUESTS
 app.use((req, res, next) => {
     console.log(`[DEBUG] Incoming: ${req.method} ${req.url}`);
+    console.log(`[DEBUG] Headers: origin=${req.headers.origin}, referer=${req.headers.referer}`);
     next();
 });
 
@@ -304,16 +305,34 @@ app.use(function (req, res, next) {
     next();
 });
 
+// DEBUG: Check Session before Passport
+app.use((req, res, next) => {
+    console.log(`[DEBUG] Session State (Pre-Passport):`, req.session);
+    console.log(`[DEBUG] Cookies Present:`, Object.keys(req.headers.cookie ? require('cookie').parse(req.headers.cookie) : {}));
+    next();
+});
+
 app.use(passport.initialize());
 app.use(passport.session());
 
 passport.serializeUser((user, done) => {
+    console.log(`[DEBUG] serializeUser: Serializing user ${user.id}`);
     done(null, user.id);
 });
 
 passport.deserializeUser((id, done) => {
+    console.log(`[DEBUG] deserializeUser: Attempting to find user ${id}`);
     User.findById(id).then(user => {
-        done(null, user);
+        if (user) {
+            console.log(`[DEBUG] deserializeUser: User found: ${user.id}`);
+            done(null, user);
+        } else {
+            console.log(`[DEBUG] deserializeUser: User NOT found for ID ${id}`);
+            done(null, null);
+        }
+    }).catch(err => {
+        console.error(`[DEBUG] deserializeUser: Error`, err);
+        done(err, null);
     });
 });
 
