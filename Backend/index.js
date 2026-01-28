@@ -286,7 +286,7 @@ app.use(cookieSession({
     sameSite: isProduction ? 'none' : 'lax',
     secure: isProduction, // Must be true for sameSite: 'none'
     httpOnly: true,
-    // proxy: true // trusting the reverse proxy when setting secure cookies (important for Vercel)
+    proxy: true // trusting the reverse proxy when setting secure cookies (important for Vercel)
 }));
 
 // Shim for passport 0.6+ compatibility with cookie-session
