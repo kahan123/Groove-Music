@@ -1,4 +1,4 @@
-const { Innertube, UniversalCache, Utils } = require('youtubei.js');
+// const { Innertube, UniversalCache, Utils } = require('youtubei.js');
 
 class YoutubeClient {
     constructor() {
@@ -11,6 +11,7 @@ class YoutubeClient {
         if (this.initPromise) return this.initPromise;
 
         this.initPromise = (async () => {
+            const { Innertube, UniversalCache, Utils } = await import('youtubei.js');
             try {
                 this.innertube = await Innertube.create({
                     client_type: 'WEB', // ANDROID fails in CJS with ParsingError, WEB works
