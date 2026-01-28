@@ -78,8 +78,7 @@ export const MusicProvider = ({ children }) => {
                 }
             }
         } catch (err) {
-            // Only log actual network/server errors, not auth failures
-            // Failed to fetch user session
+            console.error("[DEBUG] fetchUser Failed:", err);
         }
     };
 
