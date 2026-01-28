@@ -131,9 +131,7 @@ export const MusicProvider = ({ children }) => {
         }
     }, []);
 
-    useEffect(() => {
-        fetchUser();
-    }, []);
+
 
     const logout = () => {
         localStorage.removeItem('token');
