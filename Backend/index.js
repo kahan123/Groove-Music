@@ -284,8 +284,8 @@ console.log(`[DEBUG] Cookie Config - isProduction: ${isProduction}, SameSite: ${
 app.use(cookieSession({
     maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
     keys: [process.env.COOKIE_KEY],
-    sameSite: isProduction ? 'none' : 'lax',
-    secure: isProduction, // Must be true for sameSite: 'none'
+    sameSite: (isProduction || !CLIENT_URL.includes('localhost')) ? 'none' : 'lax',
+    secure: (isProduction || !CLIENT_URL.includes('localhost')), // Must be true for sameSite: 'none'
     httpOnly: true,
     proxy: true // trusting the reverse proxy when setting secure cookies (important for Vercel)
 }));
