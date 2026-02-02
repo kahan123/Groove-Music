@@ -222,7 +222,18 @@ app.get('/api/radio', async (req, res) => {
 
 
 // Initialize yt-dlp (System Python Mode)
-const ytDlpPath = 'python'; // Assumes python is in PATH
+let ytDlpPath = 'python'; // Default
+try {
+    const { execSync } = require('child_process');
+    // Try to find python3
+    execSync('python3 --version', { stdio: 'ignore' });
+    ytDlpPath = 'python3';
+} catch (e) {
+    // python3 not found, keep 'python'
+    console.log("python3 not found, using python");
+}
+
+console.log(`Using python executable: ${ytDlpPath}`);
 const ytDlpWrap = new YTDlpWrap(ytDlpPath);
 
 async function ensureBinary() {
