@@ -293,7 +293,8 @@ app.get('/api/song', async (req, res) => {
 
         res.setHeader('Content-Type', 'audio/mpeg');
 
-        let dlpStream = ytDlpWrap.execStream([
+        // Prepare args
+        const args = [
             url,
             '--js-runtime', 'node', // Keep Node runtime
 
@@ -304,7 +305,16 @@ app.get('/api/song', async (req, res) => {
             '-f', '140/251/bestaudio',
 
             '-o', '-'
-        ]);
+        ];
+
+        // ADD COOKIES IF AVAILABLE
+        const cookiesPath = await getCookiesPath();
+        if (cookiesPath) {
+            console.log(`🍪 Using cookies from ${cookiesPath}`);
+            args.push('--cookies', cookiesPath);
+        }
+
+        let dlpStream = ytDlpWrap.execStream(args);
 
         dlpStream.pipe(res);
 
@@ -333,6 +343,50 @@ const mongoose = require('mongoose');
 mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/groove')
     .then(() => console.log('✅ MongoDB Connected'))
     .catch(err => console.error('❌ MongoDB Connection Error:', err));
+
+const SystemConfig = require('./models/SystemConfig');
+
+// --- DYNAMIC COOKIE LOGIC ---
+async function getCookiesPath() {
+    try {
+        const config = await SystemConfig.findOne({ key: 'youtube_cookies' });
+        if (config && config.value) {
+            const cookiesPath = process.platform === 'win32'
+                ? path.join(__dirname, 'cookies.txt')
+                : path.join('/tmp', 'cookies.txt');
+
+            // Decode Base64 to file
+            const cookieContent = Buffer.from(config.value, 'base64').toString('utf-8');
+            fs.writeFileSync(cookiesPath, cookieContent);
+            return cookiesPath;
+        }
+    } catch (e) {
+        console.error("Failed to fetch cookies from DB:", e.message);
+    }
+    return null;
+}
+
+// ADMIN ENDPOINT: Update Cookies
+app.post('/api/admin/cookies', async (req, res) => {
+    const { secret, cookiesBase64 } = req.body;
+
+    // Simple protection (User should set ADMIN_SECRET env var)
+    if (secret !== process.env.ADMIN_SECRET) {
+        return res.status(403).send("Forbidden");
+    }
+
+    try {
+        await SystemConfig.findOneAndUpdate(
+            { key: 'youtube_cookies' },
+            { value: cookiesBase64, updatedAt: Date.now() },
+            { upsert: true, new: true }
+        );
+        res.send("Cookies updated successfully");
+    } catch (e) {
+        res.status(500).send(e.message);
+    }
+});
+// ----------------------------
 
 const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
