@@ -230,14 +230,37 @@ const ytDlpWrap = new YTDlpWrap(ytDlpPath);
 
 async function ensureBinary() {
     if (!fs.existsSync(ytDlpPath)) {
-        console.log("⬇️  Downloading yt-dlp binary...");
-        await YTDlpWrap.downloadFromGithub(ytDlpPath);
+        console.log(`⬇️  Downloading yt-dlp binary to ${ytDlpPath}...`);
 
-        // CRITICAL FOR LINUX: Give it execute permissions
-        if (process.platform !== 'win32') {
-            fs.chmodSync(ytDlpPath, '755');
+        // Custom download logic to get standalone binary on Linux (avoids creating Python dependency)
+        const url = process.platform === 'win32'
+            ? 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe'
+            : 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux';
+
+        try {
+            const response = await axios({
+                url,
+                method: 'GET',
+                responseType: 'stream'
+            });
+
+            const writer = fs.createWriteStream(ytDlpPath);
+            response.data.pipe(writer);
+
+            await new Promise((resolve, reject) => {
+                writer.on('finish', resolve);
+                writer.on('error', reject);
+            });
+
+            // CRITICAL FOR LINUX: Give it execute permissions
+            if (process.platform !== 'win32') {
+                fs.chmodSync(ytDlpPath, '755');
+            }
+            console.log("✅ yt-dlp installed and executable!");
+        } catch (error) {
+            console.error("Failed to download yt-dlp:", error.message);
+            throw error;
         }
-        console.log("✅ yt-dlp installed and executable!");
     }
 }
 
