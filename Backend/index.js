@@ -221,51 +221,23 @@ app.get('/api/radio', async (req, res) => {
 });
 
 
-// Initialize yt-dlp
-const binaryName = process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp';
-const ytDlpPath = process.platform === 'win32'
-    ? path.join(__dirname, binaryName)
-    : path.join('/tmp', binaryName);
+// Initialize yt-dlp (System Python Mode)
+const ytDlpPath = 'python'; // Assumes python is in PATH
 const ytDlpWrap = new YTDlpWrap(ytDlpPath);
 
 async function ensureBinary() {
-    if (!fs.existsSync(ytDlpPath)) {
-        console.log(`⬇️  Downloading yt-dlp binary to ${ytDlpPath}...`);
-
-        // Custom download logic to get standalone binary on Linux (avoids creating Python dependency)
-        const url = process.platform === 'win32'
-            ? 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe'
-            : 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux';
-
-        try {
-            const response = await axios({
-                url,
-                method: 'GET',
-                responseType: 'stream'
-            });
-
-            const writer = fs.createWriteStream(ytDlpPath);
-            response.data.pipe(writer);
-
-            await new Promise((resolve, reject) => {
-                writer.on('finish', resolve);
-                writer.on('error', reject);
-            });
-
-            // CRITICAL FOR LINUX: Give it execute permissions
-            if (process.platform !== 'win32') {
-                fs.chmodSync(ytDlpPath, '755');
-            }
-            console.log("✅ yt-dlp installed and executable!");
-        } catch (error) {
-            console.error("Failed to download yt-dlp:", error.message);
-            throw error;
-        }
+    try {
+        const { execSync } = require('child_process');
+        console.log("Checking for yt-dlp python module...");
+        const version = execSync(`${ytDlpPath} -m yt_dlp --version`).toString().trim();
+        console.log(`✅ yt-dlp module found! Version: ${version}`);
+    } catch (e) {
+        console.error("❌ yt-dlp module check failed:", e.message);
+        console.error("Please run: pip install -U \"yt-dlp[default,curl-cffi]\"");
     }
 }
-
-// Ensure binary exists on startup
-ensureBinary().catch(err => console.error("Failed to ensure yt-dlp binary:", err));
+// Ensure module exists on startup
+ensureBinary().catch(err => console.error("Failed to ensure yt-dlp:", err));
 
 app.get('/api/song', async (req, res) => {
     const songName = req.query.name;
@@ -294,12 +266,15 @@ app.get('/api/song', async (req, res) => {
         res.setHeader('Content-Type', 'audio/mpeg');
 
         // Prepare args
+        // Prepare args
         const args = [
+            '-m', 'yt_dlp', // Invoke module
             url,
-            '--js-runtime', 'node', // Keep Node runtime
+            '--impersonate', 'chrome', // Impersonate Chrome browser
+            // '--js-runtime', 'node', // Keep Node runtime (optional now?)
 
-            // TRICK: Pretend to be an embedded player
-            '--extractor-args', 'youtube:player_client=web_embedded',
+            // TRICK: Pretend to be an embedded player (Might conflict with impersonate, commenting out for now)
+            // '--extractor-args', 'youtube:player_client=web_embedded',
 
             // RELAX FORMAT: Accept m4a (140) OR webm (251)
             '-f', '140/251/bestaudio',
