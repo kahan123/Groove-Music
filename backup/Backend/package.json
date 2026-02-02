@@ -23,7 +23,6 @@
     "nodemon": "^3.1.11",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
-    "youtubei.js": "^16.0.1",
-    "yt-dlp-wrap": "^2.3.12"
+    "youtubei.js": "^16.0.1"
   }
 }

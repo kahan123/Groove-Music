@@ -4,7 +4,6 @@ const YouTube = require('./utils/YoutubeClient');
 const axios = require('axios');
 const fs = require('fs');
 require('dotenv').config();
-const YTDlpWrap = require('yt-dlp-wrap').default;
 const path = require('path');
 const cors = require('cors');
 
@@ -220,35 +219,13 @@ app.get('/api/radio', async (req, res) => {
     }
 });
 
-
-// Initialize yt-dlp
-const binaryName = process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp';
-const ytDlpPath = path.join(__dirname, binaryName);
-const ytDlpWrap = new YTDlpWrap(ytDlpPath);
-
-async function ensureBinary() {
-    if (!fs.existsSync(ytDlpPath)) {
-        console.log("⬇️  Downloading yt-dlp binary...");
-        await YTDlpWrap.downloadFromGithub(ytDlpPath);
-
-        // CRITICAL FOR LINUX: Give it execute permissions
-        if (process.platform !== 'win32') {
-            fs.chmodSync(ytDlpPath, '755');
-        }
-        console.log("✅ yt-dlp installed and executable!");
-    }
-}
-
-// Ensure binary exists on startup
-ensureBinary().catch(err => console.error("Failed to ensure yt-dlp binary:", err));
-
 app.get('/api/song', async (req, res) => {
     const songName = req.query.name;
     if (!songName) {
         return res.status(400).send("Please provide a song name query parameter 'name'");
     }
 
-    console.log(`Searching and Streaming: ${songName}`);
+    console.log(`Searching for: ${songName}`);
 
     try {
         // 1. Search for value
@@ -261,39 +238,22 @@ app.get('/api/song', async (req, res) => {
         const video = videos[0];
         console.log(`Found video: ${video.title} (${video.videoId})`);
 
-        // Streaming Logic
-        const url = `https://www.youtube.com/watch?v=${video.videoId}`;
-
-        console.log(`☁️  Streaming (Direct): ${video.videoId}`);
-
-        res.setHeader('Content-Type', 'audio/mpeg');
-
-        let dlpStream = ytDlpWrap.execStream([
-            url,
-            '--js-runtime', 'node', // Keep Node runtime
-
-            // TRICK: Pretend to be an embedded player
-            '--extractor-args', 'youtube:player_client=web_embedded',
-
-            // RELAX FORMAT: Accept m4a (140) OR webm (251)
-            '-f', '140/251/bestaudio',
-
-            '-o', '-'
-        ]);
-
-        dlpStream.pipe(res);
-
-        dlpStream.on('error', (err) => {
-            console.error("❌ yt-dlp Stream Error:", err.message);
-            // End the response if not already ended
-            if (!res.headersSent) {
-                res.status(500).send("Stream failed");
-            } else {
-                res.end();
-            }
+        // Return metadata for client-side playback
+        res.json({
+            videoId: video.videoId,
+            title: video.title,
+            thumbnail: video.thumbnail,
+            author: video.author,
+            duration: video.duration
         });
 
     } catch (err) {
+        const errorLog = `[${new Date().toISOString()}] Song Error for '${songName}': ${err.stack || err}\n`;
+        // Check if error.log is writable/exists to avoid crashing on logging
+        try {
+            fs.appendFileSync(path.join(__dirname, 'error.log'), errorLog);
+        } catch (e) { console.error("Could not write to error log"); }
+
         console.error('Song Error:', err);
         if (!res.headersSent) {
             res.status(500).json({ error: `Error processing request: ${err.message}` });

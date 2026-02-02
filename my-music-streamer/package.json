@@ -1,0 +1,22 @@
+{
+  "name": "my-music-streamer",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "nodemon index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "express": "^5.2.1",
+    "node-fetch": "^2.7.0",
+    "nodemon": "^3.1.11",
+    "play-dl": "^1.9.7",
+    "youtubei.js": "^16.0.1",
+    "yt-dlp-wrap": "^2.3.12"
+  }
+}

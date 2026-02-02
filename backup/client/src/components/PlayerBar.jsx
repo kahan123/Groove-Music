@@ -5,7 +5,7 @@ import { Play, Pause, SkipBack, SkipForward, Volume2, Repeat, Shuffle, Loader, R
 import AddToPlaylistModal from './AddToPlaylistModal';
 import { useToast } from '../context/ToastContext';
 
-import StreamPlayer from './StreamPlayer';
+import HiddenYouTubePlayer from './HiddenYouTubePlayer';
 
 const PlayerBar = ({ setView }) => {
     const { currentSong, isPlaying, setIsPlaying, isBuffering, setIsBuffering, togglePlay, nextSong, prevSong, startRadio, shuffle, toggleShuffle, repeat, toggleRepeat, likedSongs, toggleLike, playlists, user, addToPlaylist, provideAudioRef } = useMusic();
@@ -300,7 +300,7 @@ const PlayerBar = ({ setView }) => {
                 </div>
             </div>
 
-            <StreamPlayer
+            <HiddenYouTubePlayer
                 ref={audioRef}
                 volume={volume}
                 onProgress={handleTimeUpdate}

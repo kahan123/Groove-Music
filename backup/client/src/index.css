@@ -1,0 +1,46 @@
+:root {
+  --bg-color: #121212;
+  --sidebar-bg: #000000;
+  --surface-color: #181818;
+  --surface-hover: #282828;
+  --primary-color: #8c4bf5;
+  /* Neon Purple */
+  --secondary-color: #4b8cf5;
+  /* Blue */
+  --text-primary: #ffffff;
+  --text-secondary: #b3b3b3;
+  --font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  --border-radius: 8px;
+  --player-height: 90px;
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  font-family: var(--font-family);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  overflow: hidden;
+  /* App handles scrolling */
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #888;
+}

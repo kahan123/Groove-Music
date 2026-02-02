@@ -1,0 +1,195 @@
+/* Full Screen Player Styles */
+.full-screen-player {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(180deg, #333 0%, #000 100%);
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    padding: 24px;
+    animation: slideUpPlayer 0.3s ease-out;
+    color: white;
+}
+
+@keyframes slideUpPlayer {
+    from {
+        transform: translateY(100%);
+    }
+
+    to {
+        transform: translateY(0);
+    }
+}
+
+.fs-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 32px;
+}
+
+.fs-minimize-btn {
+    background: transparent;
+    border: none;
+    color: white;
+    cursor: pointer;
+    padding: 8px;
+}
+
+.fs-now-playing-label {
+    font-size: 0.8rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #ccc;
+}
+
+.fs-art-container {
+    width: 100%;
+    aspect-ratio: 1;
+    margin-bottom: 32px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.fs-cover-art {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.fs-track-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 24px;
+}
+
+.fs-titles {
+    flex: 1;
+    overflow: hidden;
+}
+
+.fs-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0 0 8px 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.fs-artist {
+    font-size: 1rem;
+    color: #b3b3b3;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.fs-like-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+}
+
+.fs-progress-container {
+    margin-bottom: 32px;
+}
+
+.fs-seek-bar-wrapper {
+    position: relative;
+    height: 4px;
+    background: #555;
+    border-radius: 2px;
+    margin-bottom: 8px;
+}
+
+.fs-seek-bar-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: 2px;
+}
+
+.fs-seek-bar-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    background: white;
+    border-radius: 2px;
+    z-index: 1;
+}
+
+.fs-seek-bar-fill::after {
+    content: '';
+    position: absolute;
+    right: -6px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 12px;
+    height: 12px;
+    background: white;
+    border-radius: 50%;
+}
+
+.fs-seek-bar-input {
+    position: absolute;
+    top: -10px;
+    left: 0;
+    width: 100%;
+    height: 24px;
+    opacity: 0;
+    cursor: pointer;
+    z-index: 2;
+}
+
+.fs-time-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    color: #b3b3b3;
+}
+
+.fs-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 16px;
+}
+
+.fs-control-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: white;
+    padding: 8px;
+}
+
+.fs-play-btn {
+    width: 64px;
+    height: 64px;
+    background: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border: none;
+    transform: scale(1);
+    transition: transform 0.1s;
+}
+
+.fs-play-btn:active {
+    transform: scale(0.95);
+}
