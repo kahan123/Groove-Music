@@ -591,4 +591,12 @@ if (require.main === module) {
     });
 }
 
+// Set PYTHONPATH to include our local py_libs
+if (process.env.PYTHONPATH) {
+    process.env.PYTHONPATH = path.join(__dirname, 'py_libs') + path.delimiter + process.env.PYTHONPATH;
+} else {
+    process.env.PYTHONPATH = path.join(__dirname, 'py_libs');
+}
+console.log(`Updated PYTHONPATH: ${process.env.PYTHONPATH}`);
+
 module.exports = app;
