@@ -223,7 +223,9 @@ app.get('/api/radio', async (req, res) => {
 
 // Initialize yt-dlp
 const binaryName = process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp';
-const ytDlpPath = path.join(__dirname, binaryName);
+const ytDlpPath = process.platform === 'win32'
+    ? path.join(__dirname, binaryName)
+    : path.join('/tmp', binaryName);
 const ytDlpWrap = new YTDlpWrap(ytDlpPath);
 
 async function ensureBinary() {
